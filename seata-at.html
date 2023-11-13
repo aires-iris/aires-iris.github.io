@@ -1,0 +1,339 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat"><html lang="en-US" data-colors-preset="contrast" data-primary-color="#307FFF"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="UTF-8"><meta name="robots" content="noindex">  <meta name="built-on" content="2023-11-13T21:07:40.1779784"><meta name="build-number" content="${buildNumber}">       <title>Seata_At模式分布式事务实践 | Help Instance</title><script id="virtual-toc-data" type="application/json">[{"id":"301c3073_507","level":0,"title":"演示案例架构图","anchor":"#301c3073_507"},{"id":"301c3073_509","level":0,"title":"中间件服务构建","anchor":"#301c3073_509"},{"id":"301c3073_551","level":0,"title":"代码准备","anchor":"#301c3073_551"},{"id":"301c3073_569","level":0,"title":"分布式事务演示","anchor":"#301c3073_569"}]</script><script id="topic-shortcuts" type="application/json"></script><link href="https://resources.jetbrains.com/writerside/apidoc/6.1.5-b176/app.css" rel="stylesheet">   <link rel="apple-touch-icon" sizes="180x180" href="https://jetbrains.com/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="https://jetbrains.com/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="https://jetbrains.com/favicon-16x16.png"><link rel="manifest" href="https://jetbrains.com/site.webmanifest"><link rel="mask-icon" href="https://jetbrains.com/safari-pinned-tab.svg" color="#000000"><meta name="msapplication-TileColor" content="#000000"/><meta name="msapplication-TileImage" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-144x144.png"/><meta name="msapplication-square70x70logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-70x70.png"/><meta name="msapplication-square150x150logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-150x150.png"/><meta name="msapplication-wide310x150logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-310x150.png"/><meta name="msapplication-square310x310logo" content="https://resources.jetbrains.com/storage/ui/favicons/mstile-310x310.png"/>  <meta name="image" content=""><!-- Open Graph --><meta property="og:title" content="Seata_At模式分布式事务实践 | Help Instance"/><meta property="og:description" content=""/><meta property="og:image" content=""/><meta property="og:site_name" content="Help Instance Help"/><meta property="og:type" content="website"/><meta property="og:locale" content="en_US"/><meta property="og:url" content="seata-at.html"/><!-- End Open Graph --><!-- Twitter Card --><meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content=""><meta name="twitter:title" content="Seata_At模式分布式事务实践 | Help Instance"><meta name="twitter:description" content=""><meta name="twitter:creator" content=""><meta name="twitter:image:src" content=""><!-- End Twitter Card --><!-- Schema.org WebPage --><script type="application/ld+json"> { "@context": "http://schema.org", "@type": "WebPage", "@id": "seata-at.html#webpage", "url": "seata-at.html", "name": "Seata_At模式分布式事务实践 | Help Instance", "description": "", "image": "", "inLanguage":"en-US" }</script><!-- End Schema.org --><!-- Schema.org WebSite --><script type="application/ld+json"> { "@type": "WebSite", "@id": "/#website", "url": "/", "name": "Help Instance Help" }</script><!-- End Schema.org --> <!-- Mermaid light/dark themes -->  <link rel="stylesheet" type="text/css" href="mermaid.css">  </head>     <body data-id="Seata-At模式分布式事务实践" data-main-title="Seata_At模式分布式事务实践" data-article-props="{&quot;seeAlsoStyle&quot;:&quot;links&quot;}"  data-template="article"  data-breadcrumbs="Spring.md|Spring///Spring-Cloud.md|Spring Cloud"  >   <div class="wrapper"><main class="panel _main"><header class="panel__header"><div class="container"><h3>Help Instance  Help</h3><div class="panel-trigger"></div></div></header><section class="panel__content"><div class="container"><article class="article" data-shortcut-switcher="inactive"><h1 data-toc="Seata-At模式分布式事务实践"  id="Seata-At模式分布式事务实践.md"  >Seata_At模式分布式事务实践</h1>  <section class="chapter"><h2 id="301c3073_507" data-toc="301c3073_507">演示案例架构图</h2><figure  id="301c3073_508"><img alt="image-20231024141913651" title="image-20231024141913651" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024141913651.png"  class=""  /></figure></section><section class="chapter"><h2 id="301c3073_509" data-toc="301c3073_509">中间件服务构建</h2><p id="301c3073_510">根据SpringCloudAlibaba与SpringCloud的<a href="https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4%E6%98%8E" id="301c3073_511"   data-external="true" rel="noopener noreferrer" >对应关系</a> ,本次案例实现采用中间件/框架版本如下</p><ul class="list _ul" id="301c3073_512"    ><li class="list__item" id="301c3073_513"><p>Spring Boot: 2.6.13</p></li><li class="list__item" id="301c3073_514"><p>Spring Cloud: 2021.0.5</p></li><li class="list__item" id="301c3073_515"><p>Spring Cloud Alibaba: 2021.0.5.0</p></li><li class="list__item" id="301c3073_516"><p>Nacos: 2.2.0</p></li><li class="list__item" id="301c3073_517"><p>Seata: 1.6.1</p></li><li class="list__item" id="301c3073_518"><p>Mysql: 8.1.0</p></li></ul><section class="chapter"><h3 id="nacos" data-toc="nacos">Nacos构建</h3><p id="301c3073_519">从<a href="https://github.com/alibaba/nacos/releases/tag/2.2.2" id="301c3073_520"   data-external="true" rel="noopener noreferrer" >这里</a>下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式</p><p id="301c3073_521">首先准备nacos的数据库实例:</p><div class="code-block" data-lang="yaml"         >
+version: '3.1'
+services:
+  nacos:
+    image: mysql:8.1.0
+    restart: always
+    container_name: mysql_nacos
+    environment:
+      MYSQL_ROOT_PASSWORD: 5566
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    ports:
+      - 3306:3306
+    volumes:
+      - ./config/data/mysql:/var/lib/mysql
+
+</div><p id="301c3073_523">然后修改Nacos包中的scheme导入到该数据库实例中</p><figure  id="301c3073_524"><img alt="image-20231024143134671" title="image-20231024143134671" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024143134671.png"  class=""  /></figure><p id="301c3073_525">修改conf目录下的application.properties文件,主要修改以下几项(单机模式,集群参考官方文档修改):</p><div class="code-block" data-lang="none"         >
+#*************** Config Module Related Configurations ***************#
+### If use MySQL as datasource:
+spring.datasource.platform=mysql
+
+### Count of DB:
+db.num=1
+
+### Connect URL of DB:
+db.url.0=jdbc:mysql://127.0.0.1:3306/nacos?characterEncoding=utf8&amp;connectTimeout=1000&amp;socketTimeout=3000&amp;autoReconnect=true&amp;useUnicode=true&amp;useSSL=false&amp;serverTimezone=UTC
+db.user.0=root
+db.password.0=5566
+</div><p id="301c3073_527"><a href="http://127.0.0.1:8848/nacos/index.html" id="301c3073_528"   data-external="true" rel="noopener noreferrer" >启动nacos</a>:</p><p id="301c3073_529"><code class="code" id="301c3073_530">/Users/fanzhengxiang/data/service/nacos2.2.0/bin/startup.sh -m standalone</code></p><figure  id="301c3073_531"><img alt="image-20231024143828005" title="image-20231024143828005" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024143828005.png"  class=""  /></figure></section><section class="chapter"><h3 id="seata" data-toc="seata">Seata构建</h3><p id="301c3073_532">从<a href="https://github.com/seata/seata/releases/tag/v1.6.1" id="301c3073_533"   data-external="true" rel="noopener noreferrer" >这里</a>下载seata的预编译包,本次实验seata数据同样持久化到数据库中,准备一个数据库实例</p><div class="code-block" data-lang="yaml"         >
+version: '3.1'
+services:
+  seata_db:
+    image: mysql:8.1.0
+    restart: always
+    container_name: mysql_seata
+    environment:
+      MYSQL_ROOT_PASSWORD: 5566
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    ports:
+      - 3307:3306
+    volumes:
+      - ./config/data/mysql:/var/lib/mysql
+
+</div><p id="301c3073_535">将mysql的建表数据导入到seata的数据库实例中</p><figure  id="301c3073_536"><img alt="image-20231024144338602" title="image-20231024144338602" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024144338602.png"  class=""  /></figure><p id="301c3073_537">修改seata的启动配置文件<code class="code" id="301c3073_538">conf/application.yml</code> ,主要修改config项,registry项目,store项目,以下是实例</p><aside class="prompt" data-type="tip" data-title="" id="301c3073_539"><p id="301c3073_540">注意:由于mysql的版本为8,所以驱动连接为<code class="code" id="301c3073_541">com.mysql.cj.jdbc.Driver</code> ,并且需要下载mysql8的<a href="https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.1.0/mysql-connector-j-8.1.0.jar" id="301c3073_542"   data-external="true" rel="noopener noreferrer" >java驱动</a>到seata的lib报下</p></aside><div class="code-block" data-lang="yaml"         >
+#  Copyright 1999-2019 Seata.io Group.
+#
+#  Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+server:
+  port: 7091
+
+spring:
+  application:
+    name: seata-server
+
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: ${user.home}/logs/seata
+  # extend:
+  #   logstash-appender:
+  #     destination: 127.0.0.1:4560
+  #   kafka-appender:
+  #     bootstrap-servers: 127.0.0.1:9092
+  #     topic: logback_to_logstash
+
+console:
+  user:
+    username: seata
+    password: seata
+
+seata:
+  config:
+    # support: nacos 、 consul 、 apollo 、 zk  、 etcd3
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      namespace:
+      group: SEATA_GROUP
+      username:
+      password:
+      context-path:
+      ##if use MSE Nacos with auth, mutex with username/password attribute
+      #access-key:
+      #secret-key:
+      data-id: seataServer.properties
+  registry:
+    # support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 127.0.0.1:8848
+      group: SEATA_GROUP
+      namespace:
+      cluster: default
+      username:
+      password:
+      context-path:
+      ##if use MSE Nacos with auth, mutex with username/password attribute
+      #access-key:
+      #secret-key:
+  store:
+    db:
+      datasource: druid
+      db-type: mysql
+      ## 这里注意mysql8的驱动连接为com.mysql.cj.jdbc.Driver
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://127.0.0.1:3307/seata?rewriteBatchedStatements=true
+      user: root
+      password: 5566
+      min-conn: 10
+      max-conn: 100
+      global-table: global_table
+      branch-table: branch_table
+      lock-table: lock_table
+      distributed-lock-table: distributed_lock
+      query-limit: 1000
+      max-wait: 5000
+#  server:
+#    service-port: 8091 #If not configured, the default is '${server.port} + 1000'
+  security:
+    secretKey: SeataSecretKey0c382ef121d778043159209298fd40bf3850a017
+    tokenValidityInMilliseconds: 1800000
+    ignore:
+      urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/api/v1/auth/login
+</div><p id="301c3073_544">启动seata: <code class="code" id="301c3073_545">nohup sh bin/seata-server.sh -p 18091 -n 1 &amp;</code></p><p id="301c3073_546">nacos: 注册信息</p><figure  id="301c3073_547"><img alt="image-20231024145159020" title="image-20231024145159020" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145159020.png"  class=""  /></figure><p id="301c3073_548"><a href="http://127.0.0.1:7091" id="301c3073_549"   data-external="true" rel="noopener noreferrer" >seata控制台</a></p><figure  id="301c3073_550"><img alt="image-20231024145355822" title="image-20231024145355822" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145355822.png"  class=""  /></figure></section></section><section class="chapter"><h2 id="301c3073_551" data-toc="301c3073_551">代码准备</h2><aside class="prompt" data-type="tip" data-title="" id="301c3073_552"><p id="301c3073_553">源码在<span id="301c3073_554" >这里</span>查看</p></aside><p id="301c3073_555">准备三个微服务模块的数据库实例</p><div class="code-block" data-lang="yaml"         >
+version: '3.1'
+services:
+  seata_order:
+    image: mysql:8.1.0
+    restart: always
+    container_name: seata_order
+    environment:
+      MYSQL_ROOT_PASSWORD: 5566
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    ports:
+      - 3308:3306
+    volumes:
+      - ./order/config/data/mysql:/var/lib/mysql
+
+  seata_inventory:
+    image: mysql:8.1.0
+    restart: always
+    container_name: seata_inventory
+    environment:
+      MYSQL_ROOT_PASSWORD: 5566
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    ports:
+      - 3309:3306
+    volumes:
+      - ./inventory/config/data/mysql:/var/lib/mysql
+
+  seata_account:
+    image: mysql:8.1.0
+    restart: always
+    container_name: seata_account
+    environment:
+      MYSQL_ROOT_PASSWORD: 5566
+    command:
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    ports:
+      - 3310:3306
+    volumes:
+      - ./account/config/data/mysql:/var/lib/mysql
+
+</div><p id="301c3073_557">项目依赖:</p><div class="code-block" data-lang="markup"         >
+&lt;properties&gt;
+   &lt;maven.compiler.target&gt;8&lt;/maven.compiler.target&gt;
+   &lt;maven.compiler.source&gt;8&lt;/maven.compiler.source&gt;
+   &lt;spring.boot.version&gt;2.6.13&lt;/spring.boot.version&gt;
+   &lt;spring.cloud.version&gt;2021.0.5&lt;/spring.cloud.version&gt;
+   &lt;spring.cloud.alibaba.version&gt;2021.0.5.0&lt;/spring.cloud.alibaba.version&gt;
+&lt;/properties&gt;
+
+&lt;dependencyManagement&gt;
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+            &lt;version&gt;${spring.boot.version}&lt;/version&gt;
+            &lt;type&gt;pom&lt;/type&gt;
+            &lt;scope&gt;import&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-cloud-dependencies&lt;/artifactId&gt;
+            &lt;version&gt;${spring.cloud.version}&lt;/version&gt;
+            &lt;type&gt;pom&lt;/type&gt;
+            &lt;scope&gt;import&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.alibaba.cloud&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-cloud-alibaba-dependencies&lt;/artifactId&gt;
+            &lt;version&gt;${spring.cloud.alibaba.version}&lt;/version&gt;
+            &lt;type&gt;pom&lt;/type&gt;
+            &lt;scope&gt;import&lt;/scope&gt;
+        &lt;/dependency&gt;
+
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+            &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+            &lt;version&gt;1.18.28&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/dependencyManagement&gt;
+</div><p id="301c3073_559">以订单服务为例</p><figure  id="301c3073_560"><img alt="image-20231024145709277" title="image-20231024145709277" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145709277.png"  class=""  /></figure><p id="301c3073_561">项目配置文件<code class="code" id="301c3073_562">application.yml</code></p><div class="code-block" data-lang="yaml"         >
+server:
+  port: 8081 # 端口
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3308/seata_order?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 5566
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+seata:
+  application-id: ${spring.application.name}
+  tx-service-group: ${spring.application.name}-group
+  service:
+    vgroup-mapping:
+      order-service-group: default
+  registry:
+    type: nacos
+    nacos:
+      cluster: default
+      server-addr: localhost
+      namespace:
+
+</div><p id="301c3073_564">其中账户服务和库存服务的Feign接口如下</p><div class="code-block" data-lang="java"         >
+import com.aires.feign.dto.AccountReduceBalanceDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+/**
+ * `account-service` 服务的 Feign 客户端
+ */
+@FeignClient(name = &quot;account-service&quot;)
+public interface AccountServiceFeignClient {
+
+    @PostMapping(&quot;/account/reduce-balance&quot;)
+    void reduceBalance(@RequestBody AccountReduceBalanceDTO accountReduceBalanceDTO);
+
+}
+
+</div><div class="code-block" data-lang="java"         >
+import com.aires.feign.dto.ProductReduceStockDTO;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+/**
+ * `product-service` 服务的 Feign 客户端
+ */
+@FeignClient(name = &quot;product-service&quot;)
+public interface ProductServiceFeignClient {
+
+    @PostMapping(&quot;/product/reduce-stock&quot;)
+    void reduceStock(@RequestBody ProductReduceStockDTO productReduceStockDTO);
+
+}
+
+</div><p id="301c3073_567">下单的核心业务代码</p><div class="code-block" data-lang="java"         >
+@Service
+public class OrderServiceImpl implements OrderService {
+
+    private Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Resource
+    private OrderDao orderDao;
+
+    @Resource
+    private AccountServiceFeignClient accountService;
+
+    @Resource
+    private ProductServiceFeignClient productService;
+
+    @Override
+    @GlobalTransactional
+    public Integer createOrder(Long userId, Long productId, Integer price) {
+        Integer amount = 1; // 购买数量，暂时设置为 1。
+        logger.info(&quot;[createOrder] 当前 XID: {}&quot;, RootContext.getXID());
+
+        // 扣减库存
+        productService.reduceStock(new ProductReduceStockDTO().setProductId(productId).setAmount(amount));
+
+        // 扣减余额
+        accountService.reduceBalance(new AccountReduceBalanceDTO().setUserId(userId).setPrice(price));
+
+        // 保存订单
+        OrderDO order = new OrderDO().setUserId(userId).setProductId(productId).setPayAmount(amount * price);
+        orderDao.saveOrder(order);
+        logger.info(&quot;[createOrder] 保存订单: {}&quot;, order.getId());
+
+        // 返回订单编号
+        return order.getId();
+    }
+
+}
+</div></section><section class="chapter"><h2 id="301c3073_569" data-toc="301c3073_569">分布式事务演示</h2><p id="301c3073_570">// TODO</p></section><div class="last-modified"> Last modified: 13 十一月 2023</div><div data-feedback-placeholder="true"></div><div class="navigation-links _bottom">  <a class="navigation-links__prev" href="springcloudfeign-token.html">异步接口执行的过程中发起Feign调用</a>   <a class="navigation-links__next" href="spring-boot.html">Spring Boot</a>  </div></article><div id="disqus_thread"></div></div></section></main></div>  <script src="https://resources.jetbrains.com/writerside/apidoc/6.1.5-b176/app.js"></script></body></html>
