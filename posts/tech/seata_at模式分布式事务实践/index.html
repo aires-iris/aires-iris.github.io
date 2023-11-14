@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践 | Kiki&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下 Spring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式 首先准备nacos">
+<meta name="author" content="Kiki">
+<link rel="canonical" href="https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.js" onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="apple-touch-icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="mask-icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script defer src="https://unpkg.com/mermaid@8.8.1/dist/mermaid.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.3/dist/jquery.min.js"></script>
+
+
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = ""; 
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<meta property="og:title" content="Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践" />
+<meta property="og:description" content="演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下 Spring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式 首先准备nacos" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-10-20T13:35:26+08:00" />
+<meta property="article:modified_time" content="2022-10-20T13:35:26+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践"/>
+<meta name="twitter:description" content="演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下 Spring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式 首先准备nacos"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+
+        {
+          "@type": "ListItem",
+          "position":  1 ,
+          "name": "文章",
+          "item": "https://www.atomicbot.cloud/posts/"
+        },
+
+        {
+          "@type": "ListItem",
+          "position":  2 ,
+          "name": "👨🏻‍💻 技术",
+          "item": "https://www.atomicbot.cloud/posts/tech/"
+        }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "Spring Cloud Feign \u0026\u0026 Seata At模式分布式事务实践",
+      "item": "https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Spring Cloud Feign \u0026\u0026 Seata At模式分布式事务实践",
+  "name": "Spring Cloud Feign \u0026\u0026 Seata At模式分布式事务实践",
+  "description": "演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下 Spring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式 首先准备nacos",
+  "keywords": [
+    ""
+  ],
+  "articleBody": "演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下\nSpring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式\n首先准备nacos的数据库实例:\nversion: '3.1' services: nacos: image: mysql:8.1.0 restart: always container_name: mysql_nacos environment: MYSQL_ROOT_PASSWORD: 5566 command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --explicit_defaults_for_timestamp=true --lower_case_table_names=1 ports: - 3306:3306 volumes: - ./config/data/mysql:/var/lib/mysql 然后修改Nacos包中的scheme导入到该数据库实例中\n修改conf目录下的application.properties文件,主要修改以下几项(单机模式,集群参考官方文档修改):\n#*************** Config Module Related Configurations ***************# ### If use MySQL as datasource: spring.datasource.platform=mysql ### Count of DB: db.num=1 ### Connect URL of DB: db.url.0=jdbc:mysql://127.0.0.1:3306/nacos?characterEncoding=utf8\u0026connectTimeout=1000\u0026socketTimeout=3000\u0026autoReconnect=true\u0026useUnicode=true\u0026useSSL=false\u0026serverTimezone=UTC db.user.0=root db.password.0=5566 启动nacos:\n/Users/fanzhengxiang/data/service/nacos2.2.0/bin/startup.sh -m standalone\nSeata构建 从这里下载seata的预编译包,本次实验seata数据同样持久化到数据库中,准备一个数据库实例\nversion: '3.1' services: seata_db: image: mysql:8.1.0 restart: always container_name: mysql_seata environment: MYSQL_ROOT_PASSWORD: 5566 command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --explicit_defaults_for_timestamp=true --lower_case_table_names=1 ports: - 3307:3306 volumes: - ./config/data/mysql:/var/lib/mysql 将mysql的建表数据导入到seata的数据库实例中\n修改seata的启动配置文件conf/application.yml,主要修改config项,registry项目,store项目,以下是实例\n注意:由于mysql的版本为8,所以驱动连接为com.mysql.cj.jdbc.Driver,并且需要下载mysql8的java驱动到seata的lib报下\n# Copyright 1999-2019 Seata.io Group. # # Licensed under the Apache License, Version 2.0 (the \"License\"); # you may not use this file except in compliance with the License. # You may obtain a copy of the License at # # http://www.apache.org/licenses/LICENSE-2.0 # # Unless required by applicable law or agreed to in writing, software # distributed under the License is distributed on an \"AS IS\" BASIS, # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. # See the License for the specific language governing permissions and # limitations under the License. server: port: 7091 spring: application: name: seata-server logging: config: classpath:logback-spring.xml file: path: ${user.home}/logs/seata # extend: # logstash-appender: # destination: 127.0.0.1:4560 # kafka-appender: # bootstrap-servers: 127.0.0.1:9092 # topic: logback_to_logstash console: user: username: seata password: seata seata: config: # support: nacos 、 consul 、 apollo 、 zk 、 etcd3 type: nacos nacos: server-addr: 127.0.0.1:8848 namespace: group: SEATA_GROUP username: password: context-path: ##if use MSE Nacos with auth, mutex with username/password attribute #access-key: #secret-key: data-id: seataServer.properties registry: # support: nacos 、 eureka 、 redis 、 zk 、 consul 、 etcd3 、 sofa type: nacos nacos: application: seata-server server-addr: 127.0.0.1:8848 group: SEATA_GROUP namespace: cluster: default username: password: context-path: ##if use MSE Nacos with auth, mutex with username/password attribute #access-key: #secret-key: store: db: datasource: druid db-type: mysql ## 这里注意mysql8的驱动连接为com.mysql.cj.jdbc.Driver driver-class-name: com.mysql.cj.jdbc.Driver url: jdbc:mysql://127.0.0.1:3307/seata?rewriteBatchedStatements=true user: root password: 5566 min-conn: 10 max-conn: 100 global-table: global_table branch-table: branch_table lock-table: lock_table distributed-lock-table: distributed_lock query-limit: 1000 max-wait: 5000 # server: # service-port: 8091 #If not configured, the default is '${server.port} + 1000' security: secretKey: SeataSecretKey0c382ef121d778043159209298fd40bf3850a017 tokenValidityInMilliseconds: 1800000 ignore: urls: /,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/api/v1/auth/login 启动seata: nohup sh bin/seata-server.sh -p 18091 -n 1 \u0026\nnacos: 注册信息\nseata控制台\n代码准备 源码在这里查看\n准备三个微服务模块的数据库实例\nversion: '3.1' services: seata_order: image: mysql:8.1.0 restart: always container_name: seata_order environment: MYSQL_ROOT_PASSWORD: 5566 command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --explicit_defaults_for_timestamp=true --lower_case_table_names=1 ports: - 3308:3306 volumes: - ./order/config/data/mysql:/var/lib/mysql seata_inventory: image: mysql:8.1.0 restart: always container_name: seata_inventory environment: MYSQL_ROOT_PASSWORD: 5566 command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --explicit_defaults_for_timestamp=true --lower_case_table_names=1 ports: - 3309:3306 volumes: - ./inventory/config/data/mysql:/var/lib/mysql seata_account: image: mysql:8.1.0 restart: always container_name: seata_account environment: MYSQL_ROOT_PASSWORD: 5566 command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci --explicit_defaults_for_timestamp=true --lower_case_table_names=1 ports: - 3310:3306 volumes: - ./account/config/data/mysql:/var/lib/mysql 项目依赖:\n8 8 2.6.13 2021.0.5 2021.0.5.0 org.springframework.boot spring-boot-starter-parent ${spring.boot.version} pom import org.springframework.cloud spring-cloud-dependencies ${spring.cloud.version} pom import com.alibaba.cloud spring-cloud-alibaba-dependencies ${spring.cloud.alibaba.version} pom import org.projectlombok lombok 1.18.28 以订单服务为例\n项目配置文件application.yml\nserver: port: 8081 # 端口 spring: application: name: order-service datasource: url: jdbc:mysql://127.0.0.1:3308/seata_order?useSSL=false\u0026useUnicode=true\u0026characterEncoding=UTF-8 driver-class-name: com.mysql.cj.jdbc.Driver username: root password: 5566 cloud: nacos: discovery: server-addr: 127.0.0.1:8848 seata: application-id: ${spring.application.name} tx-service-group: ${spring.application.name}-group service: vgroup-mapping: order-service-group: default registry: type: nacos nacos: cluster: default server-addr: localhost namespace: 其中账户服务和库存服务的Feign接口如下\nimport com.aires.feign.dto.AccountReduceBalanceDTO; import org.springframework.cloud.openfeign.FeignClient; import org.springframework.web.bind.annotation.PostMapping; import org.springframework.web.bind.annotation.RequestBody; /** * `account-service` 服务的 Feign 客户端 */ @FeignClient(name = \"account-service\") public interface AccountServiceFeignClient { @PostMapping(\"/account/reduce-balance\") void reduceBalance(@RequestBody AccountReduceBalanceDTO accountReduceBalanceDTO); } import com.aires.feign.dto.ProductReduceStockDTO; import org.springframework.cloud.openfeign.FeignClient; import org.springframework.web.bind.annotation.PostMapping; import org.springframework.web.bind.annotation.RequestBody; /** * `product-service` 服务的 Feign 客户端 */ @FeignClient(name = \"product-service\") public interface ProductServiceFeignClient { @PostMapping(\"/product/reduce-stock\") void reduceStock(@RequestBody ProductReduceStockDTO productReduceStockDTO); } 下单的核心业务代码\n@Service public class OrderServiceImpl implements OrderService { private Logger logger = LoggerFactory.getLogger(getClass()); @Resource private OrderDao orderDao; @Resource private AccountServiceFeignClient accountService; @Resource private ProductServiceFeignClient productService; @Override @GlobalTransactional public Integer createOrder(Long userId, Long productId, Integer price) { Integer amount = 1; // 购买数量，暂时设置为 1。 logger.info(\"[createOrder] 当前 XID: {}\", RootContext.getXID()); // 扣减库存 productService.reduceStock(new ProductReduceStockDTO().setProductId(productId).setAmount(amount)); // 扣减余额 accountService.reduceBalance(new AccountReduceBalanceDTO().setUserId(userId).setPrice(price)); // 保存订单 OrderDO order = new OrderDO().setUserId(userId).setProductId(productId).setPayAmount(amount * price); orderDao.saveOrder(order); logger.info(\"[createOrder] 保存订单: {}\", order.getId()); // 返回订单编号 return order.getId(); } } 分布式事务演示 // TODO\n",
+  "wordCount" : "1299",
+  "inLanguage": "zh",
+  "datePublished": "2022-10-20T13:35:26+08:00",
+  "dateModified": "2022-10-20T13:35:26+08:00",
+  "author":[{
+    "@type": "Person",
+    "name": "Kiki"
+  }],
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Kiki's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.atomicbot.cloud/img/Q.gif"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.atomicbot.cloud/" accesskey="h" title="拳头暴君 (Alt + H)">
+            <img src="https://www.atomicbot.cloud/img/Q.gif" alt="logo" aria-label="logo"
+                 height="35">拳头暴君</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.atomicbot.cloud/" title="🏠 主页">
+                <span>🏠 主页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/posts" title="📚 文章">
+                <span>📚 文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/tags" title="🔖 标签">
+                <span>🔖 标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/archives/" title="💥 时间轴">
+                <span>💥 时间轴</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/about" title="🍓 关于">
+                <span>🍓 关于</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/search" title="🔍 搜索 (Alt &#43; /)" accesskey=/>
+                <span>🔍 搜索</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main page">
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+</style>
+
+<article class="post-single">
+    <div id="single-content">
+        <header class="post-header">
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <h1 class="post-title">
+                Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践
+            </h1>
+            <div class="post-meta">
+
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+
+    .parent-post-meta {
+        display: flex;
+        flex-wrap: wrap;
+        opacity: 0.8;
+    }
+</style>
+
+<span class="parent-post-meta">
+    <span id="post_meta_style_1">
+        <span class="fa fa-calendar-check-o"></span>
+        <span>2022-10-20
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    
+    
+    
+    
+    
+    
+    
+    <span id="post_meta_style_3">
+        <span class="fa fa-file-word-o"></span>
+        <span>1299字
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_4">
+        <span class="fa fa-clock-o"></span>
+        <span>3分钟
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_5">
+        <span class="fa fa-user-o"></span>
+        <span>Kiki
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_6">
+        <span class="fa fa-tags" style="opacity: 0.8"></span>
+        <span>
+            <span class="post-tags-meta">
+                <a href="https://www.atomicbot.cloud/tags/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/" style="color: var(--secondary)!important;">分布式事务</a>
+                &nbsp;<a href="https://www.atomicbot.cloud/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/" style="color: var(--secondary)!important;">中间件</a>
+                &nbsp;<a href="https://www.atomicbot.cloud/tags/feign/" style="color: var(--secondary)!important;">Feign</a>
+            </span>
+        </span>
+    </span>
+</span>
+<span style="opacity: 0.8;">
+                    <span id="post_meta_style_7">
+                        &nbsp;&nbsp;
+                        <span class="fa fa-eye" ></span>
+                        <span>
+                            <span id="busuanzi_container_page_pv"><span id="busuanzi_value_page_pv"></span></span>
+                            &nbsp;&nbsp;
+                        </span>
+                    </span>
+                    <span id="post_meta_style_8">
+                        <span class="fa fa-commenting-o"></span>
+                        <span>
+                            <script src="https://cdn.staticfile.org/twikoo/1.6.22/twikoo.all.min.js"></script>
+                            <script>
+                                let url = document.documentURI
+                                
+                                let dnsUrl = "https://www.atomicbot.cloud/"
+                                let urlSplit = url.split(dnsUrl)
+                                let finalUrl = urlSplit[1]
+                                if (finalUrl[0] !== '/') {
+                                    finalUrl = '/'+finalUrl
+                                }
+                                twikoo.getCommentsCount({
+                                    envId: "https://blog-twikoo-ns5o.vercel.app/", 
+                                region: "ap-chengdu", 
+                                urls: [ 
+                                    
+                                    finalUrl,
+                                ],
+                                    includeReply: false 
+                                }).then(function (res) {
+                                    let count = res[0].count
+                                    const obj = document.getElementById("comment_count");
+                                    obj.innerText = count
+                                    
+                                    
+                                    
+                                }).catch(function (err) {
+                                    
+                                    console.error(err);
+                                });
+                            </script>
+                            <span id="comment_count"></span>
+                        </span>
+                    </span>
+                </span>
+
+</div>
+        </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e6%bc%94%e7%a4%ba%e6%a1%88%e4%be%8b%e6%9e%b6%e6%9e%84%e5%9b%be" aria-label="演示案例架构图">演示案例架构图</a></li>
+                <li>
+                    <a href="#%e4%b8%ad%e9%97%b4%e4%bb%b6%e6%9c%8d%e5%8a%a1%e6%9e%84%e5%bb%ba" aria-label="中间件服务构建">中间件服务构建</a><ul>
+                        
+                <li>
+                    <a href="#nacos%e6%9e%84%e5%bb%ba" aria-label="Nacos构建">Nacos构建</a></li>
+                <li>
+                    <a href="#seata%e6%9e%84%e5%bb%ba" aria-label="Seata构建">Seata构建</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e4%bb%a3%e7%a0%81%e5%87%86%e5%a4%87" aria-label="代码准备">代码准备</a></li>
+                <li>
+                    <a href="#%e5%88%86%e5%b8%83%e5%bc%8f%e4%ba%8b%e5%8a%a1%e6%bc%94%e7%a4%ba" aria-label="分布式事务演示">分布式事务演示</a>
+                </li>
+            </ul>
+        </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+        
+        activeElement = elements[0];
+        const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+        document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+    }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        if (elements) {
+            activeElement = Array.from(elements).find((element) => {
+                if ((getOffsetTop(element) - window.pageYOffset) > 0 &&
+                    (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                    return element;
+                }
+            }) || activeElement
+
+            elements.forEach(element => {
+                const id = encodeURI(element.getAttribute('id')).toLowerCase();
+                if (element === activeElement){
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+                } else {
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+                }
+            })
+        }
+    }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;
+    }
+</script>
+        <div class="post-content"><h4 id="演示案例架构图">演示案例架构图<a hidden class="anchor" aria-hidden="true" href="#演示案例架构图">#</a></h4>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024141913651.png" alt="image-20231024141913651"  />
+</p>
+<h4 id="中间件服务构建">中间件服务构建<a hidden class="anchor" aria-hidden="true" href="#中间件服务构建">#</a></h4>
+<blockquote>
+<p>根据SpringCloudAlibaba与SpringCloud的<a href="https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4%E6%98%8E">对应关系</a>,本次案例实现采用中间件/框架版本如下</p>
+</blockquote>
+<ul>
+<li>Spring Boot: 2.6.13</li>
+<li>Spring Cloud: 2021.0.5</li>
+<li>Spring Cloud Alibaba: 2021.0.5.0</li>
+<li>Nacos: 2.2.0</li>
+<li>Seata: 1.6.1</li>
+<li>Mysql: 8.1.0</li>
+</ul>
+<h5 id="nacos构建">Nacos构建<a hidden class="anchor" aria-hidden="true" href="#nacos构建">#</a></h5>
+<p>从<a href="https://github.com/alibaba/nacos/releases/tag/2.2.2">这里</a>下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式</p>
+<p>首先准备nacos的数据库实例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">version</span>: <span style="color:#e6db74">&#39;3.1&#39;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">services</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">nacos</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">image</span>: <span style="color:#ae81ff">mysql:8.1.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">restart</span>: <span style="color:#ae81ff">always</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">container_name</span>: <span style="color:#ae81ff">mysql_nacos</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">environment</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">MYSQL_ROOT_PASSWORD</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">command</span>:
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">default-authentication-plugin=mysql_native_password</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">character-set-server=utf8mb4</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">collation-server=utf8mb4_general_ci</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">explicit_defaults_for_timestamp=true</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">lower_case_table_names=1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ports</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">3306</span>:<span style="color:#ae81ff">3306</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">volumes</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">./config/data/mysql:/var/lib/mysql</span>
+</span></span></code></pre></div><p>然后修改Nacos包中的scheme导入到该数据库实例中</p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024143134671.png" alt="image-20231024143134671"  />
+</p>
+<p>修改conf目录下的application.properties文件,主要修改以下几项(单机模式,集群参考官方文档修改):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-properties" data-lang="properties"><span style="display:flex;"><span><span style="color:#75715e">#*************** Config Module Related Configurations ***************#</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">### If use MySQL as datasource:</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">spring.datasource.platform</span><span style="color:#f92672">=</span><span style="color:#e6db74">mysql</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">### Count of DB:</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">db.num</span><span style="color:#f92672">=</span><span style="color:#e6db74">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">### Connect URL of DB:</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">db.url.0</span><span style="color:#f92672">=</span><span style="color:#e6db74">jdbc:mysql://127.0.0.1:3306/nacos?characterEncoding=utf8&amp;connectTimeout=1000&amp;socketTimeout=3000&amp;autoReconnect=true&amp;useUnicode=true&amp;useSSL=false&amp;serverTimezone=UTC</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">db.user.0</span><span style="color:#f92672">=</span><span style="color:#e6db74">root</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">db.password.0</span><span style="color:#f92672">=</span><span style="color:#e6db74">5566</span>
+</span></span></code></pre></div><p><a href="http://127.0.0.1:8848/nacos/index.html">启动nacos</a>:</p>
+<p><code>/Users/fanzhengxiang/data/service/nacos2.2.0/bin/startup.sh -m standalone</code></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024143828005.png" alt="image-20231024143828005"  />
+</p>
+<h5 id="seata构建">Seata构建<a hidden class="anchor" aria-hidden="true" href="#seata构建">#</a></h5>
+<p>从<a href="https://github.com/seata/seata/releases/tag/v1.6.1">这里</a>下载seata的预编译包,本次实验seata数据同样持久化到数据库中,准备一个数据库实例</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">version</span>: <span style="color:#e6db74">&#39;3.1&#39;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">services</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">seata_db</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">image</span>: <span style="color:#ae81ff">mysql:8.1.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">restart</span>: <span style="color:#ae81ff">always</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">container_name</span>: <span style="color:#ae81ff">mysql_seata</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">environment</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">MYSQL_ROOT_PASSWORD</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">command</span>:
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">default-authentication-plugin=mysql_native_password</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">character-set-server=utf8mb4</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">collation-server=utf8mb4_general_ci</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">explicit_defaults_for_timestamp=true</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">lower_case_table_names=1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ports</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">3307</span>:<span style="color:#ae81ff">3306</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">volumes</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">./config/data/mysql:/var/lib/mysql</span>
+</span></span></code></pre></div><p>将mysql的建表数据导入到seata的数据库实例中</p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024144338602.png" alt="image-20231024144338602"  />
+</p>
+<p>修改seata的启动配置文件<code>conf/application.yml</code>,主要修改config项,registry项目,store项目,以下是实例</p>
+<blockquote>
+<p>注意:由于mysql的版本为8,所以驱动连接为<code>com.mysql.cj.jdbc.Driver</code>,并且需要下载mysql8的<a href="https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.1.0/mysql-connector-j-8.1.0.jar">java驱动</a>到seata的lib报下</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#75715e">#  Copyright 1999-2019 Seata.io Group.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  you may not use this file except in compliance with the License.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  You may obtain a copy of the License at</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  http://www.apache.org/licenses/LICENSE-2.0</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  Unless required by applicable law or agreed to in writing, software</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  distributed under the License is distributed on an &#34;AS IS&#34; BASIS,</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  See the License for the specific language governing permissions and</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  limitations under the License.</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">server</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">port</span>: <span style="color:#ae81ff">7091</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">spring</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">application</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">name</span>: <span style="color:#ae81ff">seata-server</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">logging</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">config</span>: <span style="color:#ae81ff">classpath:logback-spring.xml</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">file</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">path</span>: <span style="color:#ae81ff">${user.home}/logs/seata</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e"># extend:</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">#   logstash-appender:</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">#     destination: 127.0.0.1:4560</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">#   kafka-appender:</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">#     bootstrap-servers: 127.0.0.1:9092</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">#     topic: logback_to_logstash</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">console</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">user</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">seata</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">seata</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">seata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">config</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># support: nacos 、 consul 、 apollo 、 zk  、 etcd3</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">type</span>: <span style="color:#ae81ff">nacos</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">nacos</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">server-addr</span>: <span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">8848</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">namespace</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">group</span>: <span style="color:#ae81ff">SEATA_GROUP</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">username</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">password</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">context-path</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">##if use MSE Nacos with auth, mutex with username/password attribute</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">#access-key:</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">#secret-key:</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">data-id</span>: <span style="color:#ae81ff">seataServer.properties</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">registry</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># support: nacos 、 eureka 、 redis 、 zk  、 consul 、 etcd3 、 sofa</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">type</span>: <span style="color:#ae81ff">nacos</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">nacos</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">application</span>: <span style="color:#ae81ff">seata-server</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">server-addr</span>: <span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">8848</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">group</span>: <span style="color:#ae81ff">SEATA_GROUP</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">namespace</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">cluster</span>: <span style="color:#ae81ff">default</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">username</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">password</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">context-path</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">##if use MSE Nacos with auth, mutex with username/password attribute</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">#access-key:</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">#secret-key:</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">store</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">db</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">datasource</span>: <span style="color:#ae81ff">druid</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">db-type</span>: <span style="color:#ae81ff">mysql</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">## 这里注意mysql8的驱动连接为com.mysql.cj.jdbc.Driver</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">driver-class-name</span>: <span style="color:#ae81ff">com.mysql.cj.jdbc.Driver</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3307/seata?rewriteBatchedStatements=true</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">user</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">password</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">min-conn</span>: <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">max-conn</span>: <span style="color:#ae81ff">100</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">global-table</span>: <span style="color:#ae81ff">global_table</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">branch-table</span>: <span style="color:#ae81ff">branch_table</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">lock-table</span>: <span style="color:#ae81ff">lock_table</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">distributed-lock-table</span>: <span style="color:#ae81ff">distributed_lock</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">query-limit</span>: <span style="color:#ae81ff">1000</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">max-wait</span>: <span style="color:#ae81ff">5000</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#  server:</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#    service-port: 8091 #If not configured, the default is &#39;${server.port} + 1000&#39;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">security</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">secretKey</span>: <span style="color:#ae81ff">SeataSecretKey0c382ef121d778043159209298fd40bf3850a017</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">tokenValidityInMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ignore</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">urls</span>: <span style="color:#ae81ff">/,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/api/v1/auth/login</span>
+</span></span></code></pre></div><p>启动seata: <code>nohup sh bin/seata-server.sh -p 18091 -n 1 &amp;</code></p>
+<p>nacos: 注册信息</p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145159020.png" alt="image-20231024145159020"  />
+</p>
+<p><a href="http://127.0.0.1:7091">seata控制台</a></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145355822.png" alt="image-20231024145355822"  />
+</p>
+<h4 id="代码准备">代码准备<a hidden class="anchor" aria-hidden="true" href="#代码准备">#</a></h4>
+<blockquote>
+<p>源码在<a href="">这里</a>查看</p>
+</blockquote>
+<p>准备三个微服务模块的数据库实例</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">version</span>: <span style="color:#e6db74">&#39;3.1&#39;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">services</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">seata_order</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">image</span>: <span style="color:#ae81ff">mysql:8.1.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">restart</span>: <span style="color:#ae81ff">always</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">container_name</span>: <span style="color:#ae81ff">seata_order</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">environment</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">MYSQL_ROOT_PASSWORD</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">command</span>:
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">default-authentication-plugin=mysql_native_password</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">character-set-server=utf8mb4</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">collation-server=utf8mb4_general_ci</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">explicit_defaults_for_timestamp=true</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">lower_case_table_names=1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ports</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">3308</span>:<span style="color:#ae81ff">3306</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">volumes</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">./order/config/data/mysql:/var/lib/mysql</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">seata_inventory</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">image</span>: <span style="color:#ae81ff">mysql:8.1.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">restart</span>: <span style="color:#ae81ff">always</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">container_name</span>: <span style="color:#ae81ff">seata_inventory</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">environment</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">MYSQL_ROOT_PASSWORD</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">command</span>:
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">default-authentication-plugin=mysql_native_password</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">character-set-server=utf8mb4</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">collation-server=utf8mb4_general_ci</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">explicit_defaults_for_timestamp=true</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">lower_case_table_names=1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ports</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">3309</span>:<span style="color:#ae81ff">3306</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">volumes</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">./inventory/config/data/mysql:/var/lib/mysql</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">seata_account</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">image</span>: <span style="color:#ae81ff">mysql:8.1.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">restart</span>: <span style="color:#ae81ff">always</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">container_name</span>: <span style="color:#ae81ff">seata_account</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">environment</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">MYSQL_ROOT_PASSWORD</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">command</span>:
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">default-authentication-plugin=mysql_native_password</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">character-set-server=utf8mb4</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">collation-server=utf8mb4_general_ci</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">explicit_defaults_for_timestamp=true</span>
+</span></span><span style="display:flex;"><span>      --<span style="color:#ae81ff">lower_case_table_names=1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">ports</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">3310</span>:<span style="color:#ae81ff">3306</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">volumes</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ae81ff">./account/config/data/mysql:/var/lib/mysql</span>
+</span></span></code></pre></div><p>项目依赖:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span><span style="color:#f92672">&lt;properties&gt;</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">&lt;maven.compiler.target&gt;</span>8<span style="color:#f92672">&lt;/maven.compiler.target&gt;</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">&lt;maven.compiler.source&gt;</span>8<span style="color:#f92672">&lt;/maven.compiler.source&gt;</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">&lt;spring.boot.version&gt;</span>2.6.13<span style="color:#f92672">&lt;/spring.boot.version&gt;</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">&lt;spring.cloud.version&gt;</span>2021.0.5<span style="color:#f92672">&lt;/spring.cloud.version&gt;</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">&lt;spring.cloud.alibaba.version&gt;</span>2021.0.5.0<span style="color:#f92672">&lt;/spring.cloud.alibaba.version&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;/properties&gt;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;dependencyManagement&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&lt;dependencies&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;groupId&gt;</span>org.springframework.boot<span style="color:#f92672">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;artifactId&gt;</span>spring-boot-starter-parent<span style="color:#f92672">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;version&gt;</span>${spring.boot.version}<span style="color:#f92672">&lt;/version&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;type&gt;</span>pom<span style="color:#f92672">&lt;/type&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;scope&gt;</span>import<span style="color:#f92672">&lt;/scope&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;groupId&gt;</span>org.springframework.cloud<span style="color:#f92672">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;artifactId&gt;</span>spring-cloud-dependencies<span style="color:#f92672">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;version&gt;</span>${spring.cloud.version}<span style="color:#f92672">&lt;/version&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;type&gt;</span>pom<span style="color:#f92672">&lt;/type&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;scope&gt;</span>import<span style="color:#f92672">&lt;/scope&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;groupId&gt;</span>com.alibaba.cloud<span style="color:#f92672">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;artifactId&gt;</span>spring-cloud-alibaba-dependencies<span style="color:#f92672">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;version&gt;</span>${spring.cloud.alibaba.version}<span style="color:#f92672">&lt;/version&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;type&gt;</span>pom<span style="color:#f92672">&lt;/type&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;scope&gt;</span>import<span style="color:#f92672">&lt;/scope&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;dependency&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;groupId&gt;</span>org.projectlombok<span style="color:#f92672">&lt;/groupId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;artifactId&gt;</span>lombok<span style="color:#f92672">&lt;/artifactId&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&lt;version&gt;</span>1.18.28<span style="color:#f92672">&lt;/version&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&lt;/dependency&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&lt;/dependencies&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;/dependencyManagement&gt;</span>
+</span></span></code></pre></div><p>以订单服务为例</p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024145709277.png" alt="image-20231024145709277"  />
+</p>
+<p>项目配置文件<code>application.yml</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">server</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">port</span>: <span style="color:#ae81ff">8081</span> <span style="color:#75715e"># 端口</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">spring</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">application</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">name</span>: <span style="color:#ae81ff">order-service</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">datasource</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3308/seata_order?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">driver-class-name</span>: <span style="color:#ae81ff">com.mysql.cj.jdbc.Driver</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">5566</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">cloud</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">nacos</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">discovery</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">server-addr</span>: <span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">8848</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">seata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">application-id</span>: <span style="color:#ae81ff">${spring.application.name}</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">tx-service-group</span>: <span style="color:#ae81ff">${spring.application.name}-group</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">service</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">vgroup-mapping</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">order-service-group</span>: <span style="color:#ae81ff">default</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">registry</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">type</span>: <span style="color:#ae81ff">nacos</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">nacos</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">cluster</span>: <span style="color:#ae81ff">default</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">server-addr</span>: <span style="color:#ae81ff">localhost</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">namespace</span>:
+</span></span></code></pre></div><p>其中账户服务和库存服务的Feign接口如下</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#f92672">import</span> com.aires.feign.dto.AccountReduceBalanceDTO;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.cloud.openfeign.FeignClient;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.web.bind.annotation.PostMapping;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.web.bind.annotation.RequestBody;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * `account-service` 服务的 Feign 客户端
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@FeignClient</span>(name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;account-service&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">AccountServiceFeignClient</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@PostMapping</span>(<span style="color:#e6db74">&#34;/account/reduce-balance&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">reduceBalance</span>(<span style="color:#a6e22e">@RequestBody</span> AccountReduceBalanceDTO accountReduceBalanceDTO);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#f92672">import</span> com.aires.feign.dto.ProductReduceStockDTO;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.cloud.openfeign.FeignClient;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.web.bind.annotation.PostMapping;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.web.bind.annotation.RequestBody;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * `product-service` 服务的 Feign 客户端
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@FeignClient</span>(name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;product-service&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">ProductServiceFeignClient</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@PostMapping</span>(<span style="color:#e6db74">&#34;/product/reduce-stock&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">reduceStock</span>(<span style="color:#a6e22e">@RequestBody</span> ProductReduceStockDTO productReduceStockDTO);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>下单的核心业务代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#a6e22e">@Service</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">OrderServiceImpl</span> <span style="color:#66d9ef">implements</span> OrderService {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> Logger logger <span style="color:#f92672">=</span> LoggerFactory.<span style="color:#a6e22e">getLogger</span>(getClass());
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Resource</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> OrderDao orderDao;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Resource</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> AccountServiceFeignClient accountService;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Resource</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> ProductServiceFeignClient productService;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@GlobalTransactional</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> Integer <span style="color:#a6e22e">createOrder</span>(Long userId, Long productId, Integer price) {
+</span></span><span style="display:flex;"><span>        Integer amount <span style="color:#f92672">=</span> 1; <span style="color:#75715e">// 购买数量，暂时设置为 1。</span>
+</span></span><span style="display:flex;"><span>        logger.<span style="color:#a6e22e">info</span>(<span style="color:#e6db74">&#34;[createOrder] 当前 XID: {}&#34;</span>, RootContext.<span style="color:#a6e22e">getXID</span>());
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 扣减库存</span>
+</span></span><span style="display:flex;"><span>        productService.<span style="color:#a6e22e">reduceStock</span>(<span style="color:#66d9ef">new</span> ProductReduceStockDTO().<span style="color:#a6e22e">setProductId</span>(productId).<span style="color:#a6e22e">setAmount</span>(amount));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 扣减余额</span>
+</span></span><span style="display:flex;"><span>        accountService.<span style="color:#a6e22e">reduceBalance</span>(<span style="color:#66d9ef">new</span> AccountReduceBalanceDTO().<span style="color:#a6e22e">setUserId</span>(userId).<span style="color:#a6e22e">setPrice</span>(price));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 保存订单</span>
+</span></span><span style="display:flex;"><span>        OrderDO order <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> OrderDO().<span style="color:#a6e22e">setUserId</span>(userId).<span style="color:#a6e22e">setProductId</span>(productId).<span style="color:#a6e22e">setPayAmount</span>(amount <span style="color:#f92672">*</span> price);
+</span></span><span style="display:flex;"><span>        orderDao.<span style="color:#a6e22e">saveOrder</span>(order);
+</span></span><span style="display:flex;"><span>        logger.<span style="color:#a6e22e">info</span>(<span style="color:#e6db74">&#34;[createOrder] 保存订单: {}&#34;</span>, order.<span style="color:#a6e22e">getId</span>());
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 返回订单编号</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> order.<span style="color:#a6e22e">getId</span>();
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="分布式事务演示">分布式事务演示<a hidden class="anchor" aria-hidden="true" href="#分布式事务演示">#</a></h4>
+<p>// TODO</p>
+
+
+        </div>
+        <div class="post-reward">
+            <div style="padding: 0 0 0 0; margin: 0 0 0 0; width: 100%; font-size:16px; text-align: center;">
+                <div id="QR" style="opacity: 0;">
+                    <div id="wechat" style="display: inline-block">
+                        <a class="fancybox" rel="group">
+                            <img id="wechat_qr" src="https://www.atomicbot.cloud/img/wechat_pay.png" alt="wechat_pay"></a>
+                        <p>微信</p>
+                    </div>
+                    <div id="alipay" style="display: inline-block">
+                        <a class="fancybox" rel="group">
+                            <img id="alipay_qr" src="https://www.atomicbot.cloud/img/alipay.png" alt="alipay"></a>
+                        <p>支付宝</p>
+                    </div>
+                </div>
+                <button id="rewardButton"
+                        onclick="
+                    var qr = document.getElementById('QR');
+                    if (qr.style.opacity === '0') {
+                        qr.style.opacity='1';
+                    } else {
+                        qr.style.opacity='0'
+                    }"
+                >
+                    <span>🧧 鼓励</span>
+                </button>
+            </div>
+        </div>
+
+        <footer class="post-footer">
+            
+<nav class="paginav">
+  <a class="next" href="https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>Spring Cloud Feign在异步接口执行的过程中传递请求头Token</span>
+  </a>
+</nav>
+
+        </footer>
+    </div>
+
+<style>
+    .comments_details summary::marker {
+        font-size: 20px;
+        content: ' 💬展开评论';
+        color: var(--content);
+    }
+    .comments_details[open] summary::marker{
+        font-size: 20px;
+        content: '🙈关闭评论';
+        color: var(--content);
+    }
+</style>
+
+
+<div>
+    <details class="comments_details">
+        <summary style="cursor: pointer; margin: 50px 0 20px 0;width: 130px;">
+            <span style="font-size: 20px;color: var(--content);">...</span>
+        </summary>
+        <div id="tcomment"></div>
+    </details>
+    <script src="https://cdn.staticfile.org/twikoo/1.6.22/twikoo.all.min.js">
+    </script>
+    <script>
+        twikoo.init({
+            envId: "https://blog-twikoo-ns5o.vercel.app/",
+        el: "#tcomment",
+            lang: 'zh-CN',
+            region: "ap-chengdu",
+        path: window.TWIKOO_MAGIC_PATH||window.location.pathname,
+        })
+    </script>
+</div>
+</article>
+</main>
+
+<footer class="footer">
+    <span>
+        Copyright
+        &copy;
+        2020-2023
+
+        All Rights Reserved
+    </span>
+    <a href="https://beian.miit.gov.cn/" target="_blank" style="color:#939393;"></a>&nbsp;
+
+
+
+
+
+
+
+   
+    Power by <a target="_blank" href="https://gohugo.io/">Hugo</a> and <a href="https://vercel.com/" target="_blank">Vercel</a>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+    document.addEventListener('scroll', function (e) {
+        const readProgress = document.getElementById("read_progress");
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+    })
+</script>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+</script>
+<script>
+    let mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        (function() {
+            document.cookie = "change-themes" + "="+ escape ("false");
+        })()
+
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    });
+</script>
+
+<script>
+    document.body.addEventListener('copy', function (e) {
+        if (window.getSelection().toString() && window.getSelection().toString().length > 50) {
+            let clipboardData = e.clipboardData || window.clipboardData;
+            if (clipboardData) {
+                e.preventDefault();
+                let htmlData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                let textData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                clipboardData.setData('text/html', htmlData);
+                clipboardData.setData('text/plain', textData);
+            }
+        }
+    });
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = '复制';
+
+        function copyingDone() {
+            copybutton.innerText = '已复制！';
+            setTimeout(() => {
+                copybutton.innerText = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                let text = codeblock.textContent +
+                    '\r\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                navigator.clipboard.writeText(text);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) {}
+            selection.removeRange(range);
+        });
+
+        let language = codeblock.className.replaceAll("language-", "")
+        let macTool = document.createElement("div")
+        let macTool1 = document.createElement("div")
+        let macTool2 = document.createElement("div")
+        let macTool3 = document.createElement("div")
+        let languageType = document.createElement("div")
+        languageType.innerText = language
+        macTool.setAttribute('class', 'mac-tool')
+        macTool1.setAttribute('class', 'mac bb1')
+        macTool2.setAttribute('class', 'mac bb2')
+        macTool3.setAttribute('class', 'mac bb3')
+        languageType.setAttribute('class', 'language-type')
+        macTool.appendChild(macTool1)
+        macTool.appendChild(macTool2)
+        macTool.appendChild(macTool3)
+        macTool.appendChild(languageType)
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        }
+    });
+</script>
+</body>
+
+</html>

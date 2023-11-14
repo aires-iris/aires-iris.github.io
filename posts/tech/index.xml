@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>👨🏻‍💻 技术 on Kiki&#39;s Blog</title>
+    <link>https://www.atomicbot.cloud/posts/tech/</link>
+    <description>Recent content in 👨🏻‍💻 技术 on Kiki&#39;s Blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh</language>
+    <lastBuildDate>Thu, 20 Oct 2022 13:35:26 +0800</lastBuildDate><atom:link href="https://www.atomicbot.cloud/posts/tech/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践</title>
+      <link>https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/</link>
+      <pubDate>Thu, 20 Oct 2022 13:35:26 +0800</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/</guid>
+      <description>演示案例架构图 中间件服务构建 根据SpringCloudAlibaba与SpringCloud的对应关系,本次案例实现采用中间件/框架版本如下 Spring Boot: 2.6.13 Spring Cloud: 2021.0.5 Spring Cloud Alibaba: 2021.0.5.0 Nacos: 2.2.0 Seata: 1.6.1 Mysql: 8.1.0 Nacos构建 从这里下载Nacos预编译包,nacos配置数据我们采用持久化到数据库的方式 首先准备nacos</description>
+    </item>
+    
+    <item>
+      <title>Spring Cloud Feign在异步接口执行的过程中传递请求头Token</title>
+      <link>https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/</link>
+      <pubDate>Mon, 24 Jan 2022 13:37:21 +0800</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/</guid>
+      <description>Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞</description>
+    </item>
+    
+  </channel>
+</rss>

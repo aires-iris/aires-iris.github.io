@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Spring Cloud Feign在异步接口执行的过程中传递请求头Token | Kiki&#39;s Blog</title>
+<meta name="keywords" content="">
+<meta name="description" content="Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞">
+<meta name="author" content="kiki">
+<link rel="canonical" href="https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="/assets/js/highlight.js" onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="apple-touch-icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<link rel="mask-icon" href="https://www.atomicbot.cloud/img/Q.gif">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+</noscript>
+<script defer src="https://unpkg.com/mermaid@8.8.1/dist/mermaid.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.3/dist/jquery.min.js"></script>
+
+
+
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = ""; 
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+<meta property="og:title" content="Spring Cloud Feign在异步接口执行的过程中传递请求头Token" />
+<meta property="og:description" content="Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-01-24T13:37:21+08:00" />
+<meta property="article:modified_time" content="2022-01-24T13:37:21+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Spring Cloud Feign在异步接口执行的过程中传递请求头Token"/>
+<meta name="twitter:description" content="Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+
+        {
+          "@type": "ListItem",
+          "position":  1 ,
+          "name": "文章",
+          "item": "https://www.atomicbot.cloud/posts/"
+        },
+
+        {
+          "@type": "ListItem",
+          "position":  2 ,
+          "name": "👨🏻‍💻 技术",
+          "item": "https://www.atomicbot.cloud/posts/tech/"
+        }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "Spring Cloud Feign在异步接口执行的过程中传递请求头Token",
+      "item": "https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Spring Cloud Feign在异步接口执行的过程中传递请求头Token",
+  "name": "Spring Cloud Feign在异步接口执行的过程中传递请求头Token",
+  "description": "Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞",
+  "keywords": [
+    ""
+  ],
+  "articleBody": "Spring Cloud Feign 在异步接口执行的过程中传递请求头Token 业务流程 用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞,用户体验很不好\n优化后的逻辑为将第2步,调整为异步逻辑,异步调用服务B,可以使A服务快速完成逻辑处理,相应用户,B服务在流程发起成功之后,再回调A服务,回写流程发起的结果(流程发起成功或者流程发起失败的原因),此时就引申出一个问题: 在异步调用时,feign接口的请求会丢失掉请求头中的Token,导致在调用服务B时出现401\n解决方案 网上大多数的解决办法都是抄来抄去使用拦截器方式实现,不推荐,我这里采用的是Feign官方的解决方案,Feign Builder\n手动创建Feign Client\n实际操作 微服务B现有的Feign接口如下:\n@FeignClient( name = \"eip-bpm-runtime\", url = \"${eip-bpm-runtime:}\", fallbackFactory = FlowApiFallback.class ) public interface FlowApi { @RequestMapping( value = {\"/flow/instance/v1/start\"}, method = {RequestMethod.POST}, produces = {\"application/json; charset=utf-8\"} ) ObjectNode start(@RequestBody JSONObject var1) throws Exception; } 现在需要在A服务中手动创建一个FlowApi的实例发起调用\n首先在A服务中创建一个配置类\nimport com.aliyun.openservices.shade.com.alibaba.fastjson.support.spring.FastJsonJsonView; import com.fasterxml.jackson.databind.ObjectMapper; import com.hotent.api.FlowApi; import feign.Client; import feign.Feign; import org.apache.http.HttpHeaders; import org.springframework.beans.factory.ObjectFactory; import org.springframework.boot.autoconfigure.http.HttpMessageConverters; import org.springframework.cloud.openfeign.support.SpringDecoder; import org.springframework.cloud.openfeign.support.SpringEncoder; import org.springframework.cloud.openfeign.support.SpringMvcContract; import org.springframework.http.converter.HttpMessageConverter; import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter; import org.springframework.stereotype.Component; import javax.annotation.Resource; /** * BPM 异步feign请求头设置 * * @author kiki * @date 2022/1/13 14:25 * @since 0.0.1 */ @Component public class BpmFlowApiConfig { @Resource private Client client; /** * 接口请求path */ private String url; public void setUrl(String url) { this.url = url; } public FlowApi flowApiClient(String accessToken){ HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter(new ObjectMapper()); ObjectFactory\u003cHttpMessageConverters\u003e converter = () -\u003e new HttpMessageConverters(jsonConverter); return Feign.builder().client(client) .encoder(new SpringEncoder(converter)) .decoder(new SpringDecoder(converter)) .contract(new SpringMvcContract()) .requestInterceptor(template -\u003e template.header(org.springframework.http.HttpHeaders.AUTHORIZATION, accessToken)) .requestInterceptor(template -\u003e template.header(HttpHeaders.CONTENT_TYPE, FastJsonJsonView.DEFAULT_CONTENT_TYPE)) .target(FlowApi.class, url); } } 然后在需要发起对B服务调用的地方注入该配置类,并手动构建Feign客户端发起调用\n/** * desc * * @author kiki * @date 2022/1/13 11:37 * @since 0.0.1 */ @Service @Slf4j public class IAsyncServiceImpl implements IAsyncService { /** * 目标微服务的服务名称 * */ @Value(\"${bpm.url:http://eip-bpm-runtime/}\") private String flowApiUrl; @Resource private BpmFlowApiConfig bpmFlowApiConfig; /** * 异步上传发票并发起审批 * * @param paymentAddEo 请求参数 * @param header 上游请求的Token */ @Async @Override public void uploadInvoicesAndStartBpmProcess(PaymentBillAddReqDto paymentAddEo, String header) { // TODO A服务的自身业务逻辑... startNewBpmProcess(paymentAddEo, fileIdList, header); // TODO A服务的自身后续业务逻辑... } private void startNewBpmProcess(PaymentBillAddReqDto paymentAddEo, List\u003cString\u003e fileIdList, String header) { try { // ...省略业务逻辑 log.info(\"{}发起bpm申请流程参数：{}\", paymentBillDesc, paramStr); // 这里是发起调用配置的关键 // 1.设置调用服务的服务名 // 2.手动为Feign Client设置header(token) bpmFlowApiConfig.setUrl(flowApiUrl); start = bpmFlowApiConfig.flowApiClient(header).start(JSON.parseObject(paramStr)); ObjectMapper objectMapper = new ObjectMapper(); String resultStr = objectMapper.writeValueAsString(start); log.info(\"{}发起BPM审批请求结果：{}\", paymentBillDesc, resultStr); // ...省略业务逻辑 bpmProcessService.add(reqDto); } catch (Exception e) { log.error(\"{}失败，bpm返回信息{}，保存的流程信息{}，错误信息：{}\", paymentBillDesc, JSON.toJSONString(start), JSONObject.toJSONString(paymentAddEo, SerializerFeature.PrettyFormat), e); throw new BizException(String.format(\"%s发起BPM审批失败！\", e.getMessage())); } } } 其中,A服务在请求发起时,传递的Token需要在A服务发起调用前事先获取\nServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes(); HttpServletRequest request = requestAttributes.getRequest(); String accessToken = request.getHeader(\"Access-Token\"); ",
+  "wordCount" : "1108",
+  "inLanguage": "zh",
+  "datePublished": "2022-01-24T13:37:21+08:00",
+  "dateModified": "2022-01-24T13:37:21+08:00",
+  "author":[{
+    "@type": "Person",
+    "name": "kiki"
+  }],
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Kiki's Blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.atomicbot.cloud/img/Q.gif"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.atomicbot.cloud/" accesskey="h" title="拳头暴君 (Alt + H)">
+            <img src="https://www.atomicbot.cloud/img/Q.gif" alt="logo" aria-label="logo"
+                 height="35">拳头暴君</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.atomicbot.cloud/" title="🏠 主页">
+                <span>🏠 主页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/posts" title="📚 文章">
+                <span>📚 文章</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/tags" title="🔖 标签">
+                <span>🔖 标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/archives/" title="💥 时间轴">
+                <span>💥 时间轴</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/about" title="🍓 关于">
+                <span>🍓 关于</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.atomicbot.cloud/search" title="🔍 搜索 (Alt &#43; /)" accesskey=/>
+                <span>🔍 搜索</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main page">
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+</style>
+
+<article class="post-single">
+    <div id="single-content">
+        <header class="post-header">
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <h1 class="post-title">
+                Spring Cloud Feign在异步接口执行的过程中传递请求头Token
+            </h1>
+            <div class="post-meta">
+
+<style>
+    i[id*="post_meta_style"] {
+        display: flex;
+        align-items: center;
+        margin: 0 0 10px 0;
+    }
+
+    .parent-post-meta {
+        display: flex;
+        flex-wrap: wrap;
+        opacity: 0.8;
+    }
+</style>
+
+<span class="parent-post-meta">
+    <span id="post_meta_style_1">
+        <span class="fa fa-calendar-check-o"></span>
+        <span>2022-01-24
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    
+    
+    
+    
+    
+    
+    
+    <span id="post_meta_style_3">
+        <span class="fa fa-file-word-o"></span>
+        <span>1108字
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_4">
+        <span class="fa fa-clock-o"></span>
+        <span>3分钟
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_5">
+        <span class="fa fa-user-o"></span>
+        <span>kiki
+            &nbsp;&nbsp;
+        </span>
+    </span>
+    <span id="post_meta_style_6">
+        <span class="fa fa-tags" style="opacity: 0.8"></span>
+        <span>
+            <span class="post-tags-meta">
+                <a href="https://www.atomicbot.cloud/tags/spring-cloud/" style="color: var(--secondary)!important;">Spring Cloud</a>
+                &nbsp;<a href="https://www.atomicbot.cloud/tags/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/" style="color: var(--secondary)!important;">异步编程</a>
+                &nbsp;<a href="https://www.atomicbot.cloud/tags/feign/" style="color: var(--secondary)!important;">Feign</a>
+            </span>
+        </span>
+    </span>
+</span>
+<span style="opacity: 0.8;">
+                    <span id="post_meta_style_7">
+                        &nbsp;&nbsp;
+                        <span class="fa fa-eye" ></span>
+                        <span>
+                            <span id="busuanzi_container_page_pv"><span id="busuanzi_value_page_pv"></span></span>
+                            &nbsp;&nbsp;
+                        </span>
+                    </span>
+                    <span id="post_meta_style_8">
+                        <span class="fa fa-commenting-o"></span>
+                        <span>
+                            <script src="https://cdn.staticfile.org/twikoo/1.6.22/twikoo.all.min.js"></script>
+                            <script>
+                                let url = document.documentURI
+                                
+                                let dnsUrl = "https://www.atomicbot.cloud/"
+                                let urlSplit = url.split(dnsUrl)
+                                let finalUrl = urlSplit[1]
+                                if (finalUrl[0] !== '/') {
+                                    finalUrl = '/'+finalUrl
+                                }
+                                twikoo.getCommentsCount({
+                                    envId: "https://blog-twikoo-ns5o.vercel.app/", 
+                                region: "ap-chengdu", 
+                                urls: [ 
+                                    
+                                    finalUrl,
+                                ],
+                                    includeReply: false 
+                                }).then(function (res) {
+                                    let count = res[0].count
+                                    const obj = document.getElementById("comment_count");
+                                    obj.innerText = count
+                                    
+                                    
+                                    
+                                }).catch(function (err) {
+                                    
+                                    console.error(err);
+                                });
+                            </script>
+                            <span id="comment_count"></span>
+                        </span>
+                    </span>
+                </span>
+
+</div>
+        </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#spring-cloud-feign-%e5%9c%a8%e5%bc%82%e6%ad%a5%e6%8e%a5%e5%8f%a3%e6%89%a7%e8%a1%8c%e7%9a%84%e8%bf%87%e7%a8%8b%e4%b8%ad%e4%bc%a0%e9%80%92%e8%af%b7%e6%b1%82%e5%a4%b4token" aria-label="Spring Cloud Feign 在异步接口执行的过程中传递请求头Token">Spring Cloud Feign 在异步接口执行的过程中传递请求头Token</a><ul>
+                        
+                <li>
+                    <a href="#%e4%b8%9a%e5%8a%a1%e6%b5%81%e7%a8%8b" aria-label="业务流程">业务流程</a></li>
+                <li>
+                    <a href="#%e8%a7%a3%e5%86%b3%e6%96%b9%e6%a1%88" aria-label="解决方案">解决方案</a></li>
+                <li>
+                    <a href="#%e5%ae%9e%e9%99%85%e6%93%8d%e4%bd%9c" aria-label="实际操作">实际操作</a>
+                </li>
+            </ul>
+            </li>
+            </ul>
+        </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+        
+        activeElement = elements[0];
+        const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+        document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+    }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        if (elements) {
+            activeElement = Array.from(elements).find((element) => {
+                if ((getOffsetTop(element) - window.pageYOffset) > 0 &&
+                    (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                    return element;
+                }
+            }) || activeElement
+
+            elements.forEach(element => {
+                const id = encodeURI(element.getAttribute('id')).toLowerCase();
+                if (element === activeElement){
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+                } else {
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+                }
+            })
+        }
+    }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;
+    }
+</script>
+        <div class="post-content"><h3 id="spring-cloud-feign-在异步接口执行的过程中传递请求头token">Spring Cloud Feign 在异步接口执行的过程中传递请求头Token<a hidden class="anchor" aria-hidden="true" href="#spring-cloud-feign-在异步接口执行的过程中传递请求头token">#</a></h3>
+<h4 id="业务流程">业务流程<a hidden class="anchor" aria-hidden="true" href="#业务流程">#</a></h4>
+<blockquote>
+<p>用户发起请求后,在A服务中执行业务逻辑,执行过程中需要调用其他微服务B进行流程审批,简单方式是在A服务中所有逻辑(1,2,3)采用同步逻辑放在一个事务中,但是如果调用B服务的过程中,处理逻辑很复杂,会导致A服务的请求一直阻塞,用户体验很不好</p>
+</blockquote>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024110959505.png" alt="image-20231024110959505"  />
+</p>
+<p>优化后的逻辑为将第2步,调整为异步逻辑,异步调用服务B,可以使A服务快速完成逻辑处理,相应用户,B服务在流程发起成功之后,再回调A服务,回写流程发起的结果(流程发起成功或者流程发起失败的原因),此时就引申出一个问题: 在异步调用时,feign接口的请求会丢失掉请求头中的Token,导致在调用服务B时出现401</p>
+<h4 id="解决方案">解决方案<a hidden class="anchor" aria-hidden="true" href="#解决方案">#</a></h4>
+<blockquote>
+<p>网上大多数的解决办法都是抄来抄去使用拦截器方式实现,不推荐,我这里采用的是Feign官方的解决方案,Feign Builder</p>
+</blockquote>
+<p><a href="https://cloud.spring.io/spring-cloud-netflix/multi/multi_spring-cloud-feign.html">手动创建Feign Client</a></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231024112012585.png" alt="image-20231024112012585"  />
+</p>
+<h4 id="实际操作">实际操作<a hidden class="anchor" aria-hidden="true" href="#实际操作">#</a></h4>
+<p>微服务B现有的Feign接口如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@FeignClient</span>(
+</span></span><span style="display:flex;"><span>    name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;eip-bpm-runtime&#34;</span>,
+</span></span><span style="display:flex;"><span>    url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;${eip-bpm-runtime:}&#34;</span>,
+</span></span><span style="display:flex;"><span>    fallbackFactory <span style="color:#f92672">=</span> FlowApiFallback.<span style="color:#a6e22e">class</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">FlowApi</span> {
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@RequestMapping</span>(
+</span></span><span style="display:flex;"><span>        value <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#34;/flow/instance/v1/start&#34;</span>},
+</span></span><span style="display:flex;"><span>        method <span style="color:#f92672">=</span> {RequestMethod.<span style="color:#a6e22e">POST</span>},
+</span></span><span style="display:flex;"><span>        produces <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#34;application/json; charset=utf-8&#34;</span>}
+</span></span><span style="display:flex;"><span>    )
+</span></span><span style="display:flex;"><span>    ObjectNode <span style="color:#a6e22e">start</span>(<span style="color:#a6e22e">@RequestBody</span> JSONObject var1) <span style="color:#66d9ef">throws</span> Exception;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>现在需要在A服务中手动创建一个<code>FlowApi</code>的实例发起调用</p>
+<p>首先在A服务中创建一个配置类</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> com.aliyun.openservices.shade.com.alibaba.fastjson.support.spring.FastJsonJsonView;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> com.fasterxml.jackson.databind.ObjectMapper;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> com.hotent.api.FlowApi;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> feign.Client;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> feign.Feign;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.apache.http.HttpHeaders;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.beans.factory.ObjectFactory;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.cloud.openfeign.support.SpringDecoder;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.cloud.openfeign.support.SpringEncoder;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.cloud.openfeign.support.SpringMvcContract;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.http.converter.HttpMessageConverter;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> org.springframework.stereotype.Component;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> javax.annotation.Resource;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * BPM 异步feign请求头设置
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> *
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @author kiki
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @date 2022/1/13 14:25
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @since 0.0.1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@Component</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">BpmFlowApiConfig</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Resource</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> Client client;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * 接口请求path
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> String url;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">setUrl</span>(String url) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">url</span> <span style="color:#f92672">=</span> url;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> FlowApi <span style="color:#a6e22e">flowApiClient</span>(String accessToken){
+</span></span><span style="display:flex;"><span>        HttpMessageConverter jsonConverter <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> MappingJackson2HttpMessageConverter(<span style="color:#66d9ef">new</span> ObjectMapper());
+</span></span><span style="display:flex;"><span>        ObjectFactory<span style="color:#f92672">&lt;</span>HttpMessageConverters<span style="color:#f92672">&gt;</span> converter <span style="color:#f92672">=</span> () <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">new</span> HttpMessageConverters(jsonConverter);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> Feign.<span style="color:#a6e22e">builder</span>().<span style="color:#a6e22e">client</span>(client)
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">encoder</span>(<span style="color:#66d9ef">new</span> SpringEncoder(converter))
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">decoder</span>(<span style="color:#66d9ef">new</span> SpringDecoder(converter))
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">contract</span>(<span style="color:#66d9ef">new</span> SpringMvcContract())
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">requestInterceptor</span>(template <span style="color:#f92672">-&gt;</span> template.<span style="color:#a6e22e">header</span>(org.<span style="color:#a6e22e">springframework</span>.<span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">HttpHeaders</span>.<span style="color:#a6e22e">AUTHORIZATION</span>, accessToken))
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">requestInterceptor</span>(template <span style="color:#f92672">-&gt;</span> template.<span style="color:#a6e22e">header</span>(HttpHeaders.<span style="color:#a6e22e">CONTENT_TYPE</span>, FastJsonJsonView.<span style="color:#a6e22e">DEFAULT_CONTENT_TYPE</span>))
+</span></span><span style="display:flex;"><span>                .<span style="color:#a6e22e">target</span>(FlowApi.<span style="color:#a6e22e">class</span>, url);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>然后在需要发起对B服务调用的地方注入该配置类,并手动构建Feign客户端发起调用</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span><span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * desc
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> *
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @author kiki
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @date 2022/1/13 11:37
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> * @since 0.0.1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"> */</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@Service</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">@Slf4j</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">IAsyncServiceImpl</span> <span style="color:#66d9ef">implements</span> IAsyncService {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * 目标微服务的服务名称
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Value</span>(<span style="color:#e6db74">&#34;${bpm.url:http://eip-bpm-runtime/}&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> String flowApiUrl;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Resource</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> BpmFlowApiConfig bpmFlowApiConfig;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * 异步上传发票并发起审批
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     *
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * @param paymentAddEo 请求参数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     * @param header 上游请求的Token
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">     */</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Async</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@Override</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">uploadInvoicesAndStartBpmProcess</span>(PaymentBillAddReqDto paymentAddEo, String header) {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// TODO A服务的自身业务逻辑...</span>
+</span></span><span style="display:flex;"><span>         startNewBpmProcess(paymentAddEo, fileIdList, header);
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// TODO A服务的自身后续业务逻辑...</span>
+</span></span><span style="display:flex;"><span>       
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">startNewBpmProcess</span>(PaymentBillAddReqDto paymentAddEo, List<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> fileIdList, String header) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// ...省略业务逻辑</span>
+</span></span><span style="display:flex;"><span>            log.<span style="color:#a6e22e">info</span>(<span style="color:#e6db74">&#34;{}发起bpm申请流程参数：{}&#34;</span>, paymentBillDesc, paramStr);
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 这里是发起调用配置的关键</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 1.设置调用服务的服务名</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 2.手动为Feign Client设置header(token)</span>
+</span></span><span style="display:flex;"><span>            bpmFlowApiConfig.<span style="color:#a6e22e">setUrl</span>(flowApiUrl);
+</span></span><span style="display:flex;"><span>            start <span style="color:#f92672">=</span> bpmFlowApiConfig.<span style="color:#a6e22e">flowApiClient</span>(header).<span style="color:#a6e22e">start</span>(JSON.<span style="color:#a6e22e">parseObject</span>(paramStr));
+</span></span><span style="display:flex;"><span>            ObjectMapper objectMapper <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ObjectMapper();
+</span></span><span style="display:flex;"><span>            String resultStr <span style="color:#f92672">=</span> objectMapper.<span style="color:#a6e22e">writeValueAsString</span>(start);
+</span></span><span style="display:flex;"><span>            log.<span style="color:#a6e22e">info</span>(<span style="color:#e6db74">&#34;{}发起BPM审批请求结果：{}&#34;</span>, paymentBillDesc, resultStr);
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// ...省略业务逻辑</span>
+</span></span><span style="display:flex;"><span>            bpmProcessService.<span style="color:#a6e22e">add</span>(reqDto);
+</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">catch</span> (Exception e) {
+</span></span><span style="display:flex;"><span>            log.<span style="color:#a6e22e">error</span>(<span style="color:#e6db74">&#34;{}失败，bpm返回信息{}，保存的流程信息{}，错误信息：{}&#34;</span>, paymentBillDesc, JSON.<span style="color:#a6e22e">toJSONString</span>(start), JSONObject.<span style="color:#a6e22e">toJSONString</span>(paymentAddEo, SerializerFeature.<span style="color:#a6e22e">PrettyFormat</span>), e);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> BizException(String.<span style="color:#a6e22e">format</span>(<span style="color:#e6db74">&#34;%s发起BPM审批失败！&#34;</span>, e.<span style="color:#a6e22e">getMessage</span>()));
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>其中,A服务在请求发起时,传递的Token需要在A服务发起调用前事先获取</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>ServletRequestAttributes requestAttributes <span style="color:#f92672">=</span> (ServletRequestAttributes) RequestContextHolder.<span style="color:#a6e22e">getRequestAttributes</span>();
+</span></span><span style="display:flex;"><span>HttpServletRequest request <span style="color:#f92672">=</span> requestAttributes.<span style="color:#a6e22e">getRequest</span>();
+</span></span><span style="display:flex;"><span>String accessToken <span style="color:#f92672">=</span> request.<span style="color:#a6e22e">getHeader</span>(<span style="color:#e6db74">&#34;Access-Token&#34;</span>);
+</span></span></code></pre></div>
+
+        </div>
+        <div class="post-reward">
+            <div style="padding: 0 0 0 0; margin: 0 0 0 0; width: 100%; font-size:16px; text-align: center;">
+                <div id="QR" style="opacity: 0;">
+                    <div id="wechat" style="display: inline-block">
+                        <a class="fancybox" rel="group">
+                            <img id="wechat_qr" src="https://www.atomicbot.cloud/img/wechat_pay.png" alt="wechat_pay"></a>
+                        <p>微信</p>
+                    </div>
+                    <div id="alipay" style="display: inline-block">
+                        <a class="fancybox" rel="group">
+                            <img id="alipay_qr" src="https://www.atomicbot.cloud/img/alipay.png" alt="alipay"></a>
+                        <p>支付宝</p>
+                    </div>
+                </div>
+                <button id="rewardButton"
+                        onclick="
+                    var qr = document.getElementById('QR');
+                    if (qr.style.opacity === '0') {
+                        qr.style.opacity='1';
+                    } else {
+                        qr.style.opacity='0'
+                    }"
+                >
+                    <span>🧧 鼓励</span>
+                </button>
+            </div>
+        </div>
+
+        <footer class="post-footer">
+            
+<nav class="paginav">
+  <a class="prev" href="https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践</span>
+  </a>
+</nav>
+
+        </footer>
+    </div>
+
+<style>
+    .comments_details summary::marker {
+        font-size: 20px;
+        content: ' 💬展开评论';
+        color: var(--content);
+    }
+    .comments_details[open] summary::marker{
+        font-size: 20px;
+        content: '🙈关闭评论';
+        color: var(--content);
+    }
+</style>
+
+
+<div>
+    <details class="comments_details">
+        <summary style="cursor: pointer; margin: 50px 0 20px 0;width: 130px;">
+            <span style="font-size: 20px;color: var(--content);">...</span>
+        </summary>
+        <div id="tcomment"></div>
+    </details>
+    <script src="https://cdn.staticfile.org/twikoo/1.6.22/twikoo.all.min.js">
+    </script>
+    <script>
+        twikoo.init({
+            envId: "https://blog-twikoo-ns5o.vercel.app/",
+        el: "#tcomment",
+            lang: 'zh-CN',
+            region: "ap-chengdu",
+        path: window.TWIKOO_MAGIC_PATH||window.location.pathname,
+        })
+    </script>
+</div>
+</article>
+</main>
+
+<footer class="footer">
+    <span>
+        Copyright
+        &copy;
+        2020-2023
+
+        All Rights Reserved
+    </span>
+    <a href="https://beian.miit.gov.cn/" target="_blank" style="color:#939393;"></a>&nbsp;
+
+
+
+
+
+
+
+   
+    Power by <a target="_blank" href="https://gohugo.io/">Hugo</a> and <a href="https://vercel.com/" target="_blank">Vercel</a>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+    document.addEventListener('scroll', function (e) {
+        const readProgress = document.getElementById("read_progress");
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = document.documentElement.clientHeight;
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+    })
+</script>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+</script>
+<script>
+    let mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        (function() {
+            document.cookie = "change-themes" + "="+ escape ("false");
+        })()
+
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    });
+</script>
+
+<script>
+    document.body.addEventListener('copy', function (e) {
+        if (window.getSelection().toString() && window.getSelection().toString().length > 50) {
+            let clipboardData = e.clipboardData || window.clipboardData;
+            if (clipboardData) {
+                e.preventDefault();
+                let htmlData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                let textData = window.getSelection().toString() +
+                    '\r\n\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                clipboardData.setData('text/html', htmlData);
+                clipboardData.setData('text/plain', textData);
+            }
+        }
+    });
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerText = '复制';
+
+        function copyingDone() {
+            copybutton.innerText = '已复制！';
+            setTimeout(() => {
+                copybutton.innerText = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                let text = codeblock.textContent +
+                    '\r\n————————————————\r\n' +
+                    '版权声明：本文为「'+"Kiki's Blog"+'」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。' +
+                '\r\n原文链接：' + location.href;
+                navigator.clipboard.writeText(text);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) {}
+            selection.removeRange(range);
+        });
+
+        let language = codeblock.className.replaceAll("language-", "")
+        let macTool = document.createElement("div")
+        let macTool1 = document.createElement("div")
+        let macTool2 = document.createElement("div")
+        let macTool3 = document.createElement("div")
+        let languageType = document.createElement("div")
+        languageType.innerText = language
+        macTool.setAttribute('class', 'mac-tool')
+        macTool1.setAttribute('class', 'mac bb1')
+        macTool2.setAttribute('class', 'mac bb2')
+        macTool3.setAttribute('class', 'mac bb3')
+        languageType.setAttribute('class', 'language-type')
+        macTool.appendChild(macTool1)
+        macTool.appendChild(macTool2)
+        macTool.appendChild(macTool3)
+        macTool.appendChild(languageType)
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+            container.appendChild(macTool)
+        }
+    });
+</script>
+</body>
+
+</html>
