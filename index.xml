@@ -17,15 +17,6 @@
     </item>
     
     <item>
-      <title>Redis数据持久化高可用</title>
-      <link>https://www.atomicbot.cloud/posts/tech/redis%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E9%AB%98%E5%8F%AF%E7%94%A8/</link>
-      <pubDate>Wed, 19 Oct 2022 13:35:26 +0800</pubDate>
-      
-      <guid>https://www.atomicbot.cloud/posts/tech/redis%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E9%AB%98%E5%8F%AF%E7%94%A8/</guid>
-      <description>介绍 Redis通常用来作为应用程序与数据库DB之间的一层缓存中间件,来保证数据的访问效率,那既然是一层中间件,必然存在宕机、崩溃的问题,一旦Redis服务不可用,可能产生的后果包括: Redis进程中保存的数据全部丢失,引文Redis数据是存在RAM中的 数据访问从内存级别降低至IO</description>
-    </item>
-    
-    <item>
       <title>Spring Cloud Feign在异步接口执行的过程中传递请求头Token</title>
       <link>https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/</link>
       <pubDate>Mon, 24 Jan 2022 13:37:21 +0800</pubDate>
@@ -41,6 +32,42 @@
       
       <guid>https://www.atomicbot.cloud/about/</guid>
       <description>🔖🔖 211非科班程序员,自学编程混口饭吃,坐标成都,在某中大型食品公司任Java开发工程师一枚。 主要技术栈涉猎有以下: 💥 Java核心 💥 Spring Boot Spring Cloud生态 💥 Spring生态常用且成熟的中间件 🚀 Vue2+Vue3 (学习中,暂时还差点火候) ⚡️ Mysql数据库与Linux服务器 🚀 CI/CD,持续集成</description>
+    </item>
+    
+    <item>
+      <title>Redis高可用之集群模式</title>
+      <link>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E9%9B%86%E7%BE%A4%E6%A8%A1%E5%BC%8F/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E9%9B%86%E7%BE%A4%E6%A8%A1%E5%BC%8F/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redis高可用之哨兵模式</title>
+      <link>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redis高可用之主从模式</title>
+      <link>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redis数据持久化高可用</title>
+      <link>https://www.atomicbot.cloud/posts/tech/redis%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E9%AB%98%E5%8F%AF%E7%94%A8/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/posts/tech/redis%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E9%AB%98%E5%8F%AF%E7%94%A8/</guid>
+      <description>介绍 Redis通常用来作为应用程序与数据库DB之间的一层缓存中间件,来保证数据的访问效率,那既然是一层中间件,必然存在宕机、崩溃的问题,一旦Redis服务不可用,可能产生的后果包括: Redis进程中保存的数据全部丢失,引文Redis数据是存在RAM中的 数据访问从内存级别降低至IO</description>
     </item>
     
     
