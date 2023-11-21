@@ -7,7 +7,7 @@
 <meta name="robots" content="index, follow">
 <title>Redis高可用之主从模式 | Kiki&#39;s Blog</title>
 <meta name="keywords" content="">
-<meta name="description" content="Redis高可用之主从模式 - Kiki&#39;s Blog">
+<meta name="description" content="主从复制介绍 Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性. 目前Redis实现高可用服务主要有三种方式: 主从模式、哨兵模式、集群模式.首先来说主从模式. R">
 <meta name="author" content="Kiki">
 <link rel="canonical" href="https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
@@ -46,15 +46,15 @@ var _hmt = _hmt || [];
 })();
 </script>
 <meta property="og:title" content="Redis高可用之主从模式" />
-<meta property="og:description" content="" />
+<meta property="og:description" content="主从复制介绍 Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性. 目前Redis实现高可用服务主要有三种方式: 主从模式、哨兵模式、集群模式.首先来说主从模式. R" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F/" /><meta property="article:section" content="posts" />
-
-
+<meta property="article:published_time" content="2022-09-19T13:35:26+08:00" />
+<meta property="article:modified_time" content="2022-09-19T13:35:26+08:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Redis高可用之主从模式"/>
-<meta name="twitter:description" content=""/>
+<meta name="twitter:description" content="主从复制介绍 Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性. 目前Redis实现高可用服务主要有三种方式: 主从模式、哨兵模式、集群模式.首先来说主从模式. R"/>
 
 
 <script type="application/ld+json">
@@ -91,15 +91,15 @@ var _hmt = _hmt || [];
   "@type": "BlogPosting",
   "headline": "Redis高可用之主从模式",
   "name": "Redis高可用之主从模式",
-  "description": "",
+  "description": "主从复制介绍 Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性. 目前Redis实现高可用服务主要有三种方式: 主从模式、哨兵模式、集群模式.首先来说主从模式. R",
   "keywords": [
     ""
   ],
-  "articleBody": "",
-  "wordCount" : "0",
+  "articleBody": "主从复制介绍 Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性.\n目前Redis实现高可用服务主要有三种方式: 主从模式、哨兵模式、集群模式.首先来说主从模式.\nRedis的主从模式主要是通过复制的方法,将主节点上的Redis内存数据同步复制一份到从节点上,和Mysql的主从模式很相似,主节点通常称之为master节点,从节点称之为slave节点,主从复制的方向为单向,数据只能从主节点复制到从节点,不能反过来\n主从保证数据一致性 为了保证主节点Redis服务和从节点的Redis服务的数据一致性,同时也为了分担访问压力,负载均衡,通常会在应用程序中采取读写分离的模式对于读操作,可以同时在主节点和从节点执行,因为读取操作是幂等的,通常读取会在从节点上执行,对于实时性和准确性由100%要求的业务,可以谨慎评估后从主节点读取,对于写操作,只能在主节点上执行,主节点执行后将写操作的指令同步到从节点\n为什么采用读写分离 主从模式的读写分离和Mysql做读写分离的动机是一样的.因为已经划分了主库和从库,从库的数据是从主库单向复制来的,如果主库和从库都能执行写操作,那么写入到从库的数据就会在主库中无法查到,导致数据不一致的问题,这是分布式模式的通病.如果非要强行保证数据一致性,不那么Redis就需要加锁,或者使用队列执行,并且由于Redis是单线程的,势必会严重降低性能\n主从模式还有其他什么作用\n故障隔离和恢复: 无论是master崩溃或者是slave崩溃,其他节点依然可以提供读取服务(master崩溃时无法写入),尽量保证程序正常运行,并且可以手动将某个slave重新指定为master继续提供写服务 读写隔离:master负责写入,slave负责读取,分摊流量负载均衡 高可用:主从模式是高可用的基石,哨兵和集群都是基于主从模式而来的 主从模式实践 主从复制的开启,完全是在从节点发起的动作,不需要在主节点上做任何事,通过使用replicaof(5.0版本前使用slaveof)命令可以形成主从关系\n开启主从复制有三种方式:\n配置文件方式 在配置文件中指定master节点的ip和端口 replicaof 启动命令方式 在启动Redis实例时加入参数 ./redis-server redis.conf --replicaof 127.0.0.1 18080\n客户端使用命令方式 使用redis-cli登录实例后,手动执行命令,建立主从关系\nSLAVEOF 127.0.0.1 18080\n主从复制原理 主从模式开启后,应用层采用读写分离,所有数据的写操作只会在主库上执行,所有读操作在从库上执行(特殊情况可以从主库读取)\n主从保证数据的最终一致性,主库数据更新后会立即同步到从库\n主从库的同步步骤 主从库的数据同步主要有三种情况\n首次配置主从库时的全量数据同步 主从库正常运行期间的数据实时同步 主从实例网络断开一段时间后重连时对增量数据的同步和实时数据的同步 第一次全量同步 第一次全量同步主要分为三个阶段: 准备阶段 主库同步数据到从库 发送同步期间的增量指令到从库\n建立连接:\n从节点在配置文件中配置了replicaof 参数,从节点就知道需要去哪个主节点同步数据 连接成功后,从库开启replicaof操作,同时发送psync指令告诉主库,我准备开始同步数据了,psync指令包含runId和offset2个参数 runId: 每个redis实例启动成功后会自动生成一个唯一标识,从库第一次同步还不知道主库的runID,所以参数默认时? 第一次复制时,没有偏移量,offset设置为-1,这样就会从主库的第一条指令开始复制 主库收到psync指令后根据参数启动复制,使用FULLRESYNC来响应命令,同时带上2个参数:主库的runID和主库目前的复制进度,返回给从库 从库收到响应后,记录下这2个参数 主库同步数据给从库\nmaster节点执行BGSAVE指令生成RDB文件,将文件发送给从库,从库收到RDB文件后,保存到磁盘,清空当前Redis实例中的数据,再将RDN文件中的数据加载到内存\n主库会为每一个从库开辟一块replication buffer的缓冲区记录,用于记录在RDB文件生成后主库接收到的所有写指令\n发送新的写命令到从库\n从库在初始化完RDB文件中的数据到内存之后,继续执行从replication buffer发送过来的数据,避免出现数据断层\nreplication buffer缓冲区创建在master主库上,存放的是以下时间内master数据的写操作\nmaster执行BGSAVE指令期间的写操作 master传输RDB文件到从库期间的写操作 slave初始化RDB文件到内存期间的写操作 三个步骤完成了Redis从库的第一次全量复制,RDB作为二进制文件,无论是网络传输还是写盘的IO,效率都比AOF更快,所以主从模式会选择RDB文件来做同步\n增量同步 在网络断开之后或者从库故障恢复之后,主从模式会采用增量复制的方式继续同步,而不是全量同步,来提升效率\n从库在故障恢复之后可以实现增量复制的关键就在repl_backlog_buffer缓冲区上面,master会将写指令记录到repl_backlog_buffer中,并使用master_repl_offset记录master写入的位置偏移量,slave则使用slave_repl_offset来读取偏移量,所以master在新增写操作的时候,偏移量会增加,通常情况下,这2个偏移量会保持同步\n但是当网络断开或者从库故障恢复后,主库继续收到写操作,从库暂停执行,就会导致master_repl_offset大于slave_repl_offset\n在从库重新连接之后,从库向主库发送psync指令,并将自己的runID和slave_repl_offset2个参数发给主库,主库只需要将master_repl_offset与slave_repl_offset之间的写操作指令发送给从库即可\n在配置repl_backlog_buffer_size的时候,需要考虑多方因素,太大了会导致增量同步的执行时间较长,还不如RDB全覆盖,太小了的话,从库有可能还没有读取到缓冲区的数据就被master的新的写操作给覆盖了\n一般情况下的缓冲区计算公式: repl_backlog_buffer_size = seconds * write_size_per_second * 1.5\nseconds:正常情况下,主库断开到重连的平均时间,单位秒\nwrite_size_per_second: 主库平均每秒产生的写指令数量\n1.5: 预留容量\n基于长连接的命令传播 以上的同步都是为了完成完成的复制,在完整复制完,主从正常工作开始后进行同步需要保持长连接,在主库接收到写操作指令后,通过这个长连接同步给从库,这个过程称之为基于长连接的命令传播,为了宝成传播的有效性和稳定性,从节点采用心跳机制进行侦测,发送命令 PING和REPLCONF ACK\n每隔一定时间(配置中配置),比如30S,主节点会向从节点发送PING命令来判断从节点的健康情况.\n命令传播阶段,从节点会默认以每秒的频率向主服务器发送命令,将从节点已经复制的偏移量发送过去 REPLCONF ACK , replication_offset属性是指当前从节点已经从主节点复制的偏移量,从节点发送这个REPLCONF ACK命令的主要作用有3个:\n检查主节点的健康状况和网络情况 辅助实现min-slaves选项,Redis的min-slaves-to-write(少于N个从节点时拒绝执行写命令)和min-slaves-lag(主从延迟大于等于N秒时,拒绝执行写命令),这2个选项可以防止主服务器在不安全的情况下执行写命令 检测数据丢失: 从节点发送了slave_repl_offset偏移量,主节点会和master_repl_offset进行对比,如果不一致,说明从节点丢失了数据,主节点会从repl_backlog_buffer中将2个offset区间的指令找到并推送给从节点 如何确定全量还是增量 核心点就是从节点发送的psync指令:\n从节点根据自身是否需要全量发送psync给主节点 如果从未执行过replicaof,则发送psync ? -1,代表全量复制 如果之前同步过,则取当前实例的runID和已同步的offset发送指令 psync 主节点根据psync质量的参数决定是全量同步还是增量同步 主,从节点的runID一致,并且从节点发送的slave_repl_offset在repl_backlog_buffer中存在(环形闭合的内存缓冲区,有可能被擦除了),则回复CONTINUE,代表以增量模式进行复制 主,从节点的runID不一致,或者从节点发送的slave_repl_offset在repl_backlog_buffer中不存在(可能是从节点宕机时间过久),则回复FULLRESYNC 表示要进行全量复制,同时记录下主节点的runID和offset 一主多从同步的理解 从以上内容可以得知:\n多个从库的情况下,每个从库都会记录自己的slave_repl_offset,各自的复制进度也不相同 从库重连进行恢复时,会通过psync命令将自己的slave_repl_offset告诉主库,主库来判断是增量复制还是全量复制 replication buffer和repl_backlog_buffer的说明:\nreplication buffer是主从库在进行全量复制时,主库上用于和从库连接的客户端buffer,repl_backlog_buffer是为了支持从库的增量复制,主库上用于持续记录主库写操作的一块专用buffer,左右从库共享\n",
+  "wordCount" : "3838",
   "inLanguage": "zh",
-  "datePublished": "0001-01-01T00:00:00Z",
-  "dateModified": "0001-01-01T00:00:00Z",
+  "datePublished": "2022-09-19T13:35:26+08:00",
+  "dateModified": "2022-09-19T13:35:26+08:00",
   "author":[{
     "@type": "Person",
     "name": "Kiki"
@@ -261,7 +261,7 @@ var _hmt = _hmt || [];
 <span class="parent-post-meta">
     <span id="post_meta_style_1">
         <span class="fa fa-calendar-check-o"></span>
-        <span>0001-01-01
+        <span>2022-09-19
             &nbsp;&nbsp;
         </span>
     </span>
@@ -274,13 +274,13 @@ var _hmt = _hmt || [];
     
     <span id="post_meta_style_3">
         <span class="fa fa-file-word-o"></span>
-        <span>0字
+        <span>3838字
             &nbsp;&nbsp;
         </span>
     </span>
     <span id="post_meta_style_4">
         <span class="fa fa-clock-o"></span>
-        <span>0分钟
+        <span>8分钟
             &nbsp;&nbsp;
         </span>
     </span>
@@ -348,7 +348,239 @@ var _hmt = _hmt || [];
                 </span>
 
 </div>
-        </header> 
+        </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e5%a4%8d%e5%88%b6%e4%bb%8b%e7%bb%8d" aria-label="主从复制介绍">主从复制介绍</a></li>
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e4%bf%9d%e8%af%81%e6%95%b0%e6%8d%ae%e4%b8%80%e8%87%b4%e6%80%a7" aria-label="主从保证数据一致性">主从保证数据一致性</a><ul>
+                        
+                <li>
+                    <a href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e9%87%87%e7%94%a8%e8%af%bb%e5%86%99%e5%88%86%e7%a6%bb" aria-label="为什么采用读写分离">为什么采用读写分离</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e6%a8%a1%e5%bc%8f%e5%ae%9e%e8%b7%b5" aria-label="主从模式实践">主从模式实践</a><ul>
+                        
+                <li>
+                    <a href="#%e9%85%8d%e7%bd%ae%e6%96%87%e4%bb%b6%e6%96%b9%e5%bc%8f" aria-label="配置文件方式">配置文件方式</a></li>
+                <li>
+                    <a href="#%e5%90%af%e5%8a%a8%e5%91%bd%e4%bb%a4%e6%96%b9%e5%bc%8f" aria-label="启动命令方式">启动命令方式</a></li>
+                <li>
+                    <a href="#%e5%ae%a2%e6%88%b7%e7%ab%af%e4%bd%bf%e7%94%a8%e5%91%bd%e4%bb%a4%e6%96%b9%e5%bc%8f" aria-label="客户端使用命令方式">客户端使用命令方式</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e5%a4%8d%e5%88%b6%e5%8e%9f%e7%90%86" aria-label="主从复制原理">主从复制原理</a><ul>
+                        
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e5%ba%93%e7%9a%84%e5%90%8c%e6%ad%a5%e6%ad%a5%e9%aa%a4" aria-label="主从库的同步步骤">主从库的同步步骤</a><ul>
+                        
+                <li>
+                    <a href="#%e7%ac%ac%e4%b8%80%e6%ac%a1%e5%85%a8%e9%87%8f%e5%90%8c%e6%ad%a5" aria-label="第一次全量同步">第一次全量同步</a></li>
+                <li>
+                    <a href="#%e5%a2%9e%e9%87%8f%e5%90%8c%e6%ad%a5" aria-label="增量同步">增量同步</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e5%9f%ba%e4%ba%8e%e9%95%bf%e8%bf%9e%e6%8e%a5%e7%9a%84%e5%91%bd%e4%bb%a4%e4%bc%a0%e6%92%ad" aria-label="基于长连接的命令传播">基于长连接的命令传播</a></li>
+                <li>
+                    <a href="#%e5%a6%82%e4%bd%95%e7%a1%ae%e5%ae%9a%e5%85%a8%e9%87%8f%e8%bf%98%e6%98%af%e5%a2%9e%e9%87%8f" aria-label="如何确定全量还是增量">如何确定全量还是增量</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e4%b8%80%e4%b8%bb%e5%a4%9a%e4%bb%8e%e5%90%8c%e6%ad%a5%e7%9a%84%e7%90%86%e8%a7%a3" aria-label="一主多从同步的理解">一主多从同步的理解</a>
+                </li>
+            </ul>
+        </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+        
+        activeElement = elements[0];
+        const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+        document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+    }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        if (elements) {
+            activeElement = Array.from(elements).find((element) => {
+                if ((getOffsetTop(element) - window.pageYOffset) > 0 &&
+                    (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                    return element;
+                }
+            }) || activeElement
+
+            elements.forEach(element => {
+                const id = encodeURI(element.getAttribute('id')).toLowerCase();
+                if (element === activeElement){
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+                } else {
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+                }
+            })
+        }
+    }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;
+    }
+</script>
+        <div class="post-content"><h4 id="主从复制介绍">主从复制介绍<a hidden class="anchor" aria-hidden="true" href="#主从复制介绍">#</a></h4>
+<p>Redis的RDB和AOF持久化机制,只是解决了Redis服务崩溃后的快速恢复数据,但是并没有减少或者降低Redis服务崩溃的可能性,也就是没有提高Redis服务的高可用性.</p>
+<p>目前Redis实现高可用服务主要有三种方式: <code>主从模式</code>、<code>哨兵模式</code>、<code>集群模式</code>.首先来说主从模式.</p>
+<p>Redis的主从模式主要是通过复制的方法,将主节点上的Redis内存数据同步复制一份到从节点上,和Mysql的主从模式很相似,主节点通常称之为<code>master</code>节点,从节点称之为<code>slave</code>节点,主从复制的方向为单向,数据只能从主节点复制到从节点,不能反过来</p>
+<h4 id="主从保证数据一致性">主从保证数据一致性<a hidden class="anchor" aria-hidden="true" href="#主从保证数据一致性">#</a></h4>
+<p>为了保证主节点Redis服务和从节点的Redis服务的数据一致性,同时也为了分担访问压力,负载均衡,通常会在应用程序中采取<code>读写分离的模式</code>对于<strong>读操作,可以同时在主节点和从节点执行,因为读取操作是幂等的,通常读取会在从节点上执行,对于实时性和准确性由100%要求的业务,可以谨慎评估后从主节点读取</strong>,对于<strong>写操作,只能在主节点上执行,主节点执行后将写操作的指令同步到从节点</strong></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231121150031062.png" alt="image-20231121150031062"  />
+</p>
+<h5 id="为什么采用读写分离">为什么采用读写分离<a hidden class="anchor" aria-hidden="true" href="#为什么采用读写分离">#</a></h5>
+<p>主从模式的读写分离和Mysql做读写分离的动机是一样的.因为已经划分了主库和从库,从库的数据是从主库单向复制来的,如果主库和从库都能执行写操作,那么写入到从库的数据就会在主库中无法查到,导致数据不一致的问题,这是分布式模式的通病.如果非要强行保证数据一致性,不那么Redis就需要加锁,或者使用队列执行,并且由于Redis是单线程的,势必会严重降低性能</p>
+<p>主从模式还有其他什么作用</p>
+<ul>
+<li><code>故障隔离和恢复</code>: 无论是master崩溃或者是slave崩溃,其他节点依然可以提供读取服务(master崩溃时无法写入),尽量保证程序正常运行,并且可以手动将某个slave重新指定为master继续提供写服务</li>
+<li>读写隔离:master负责写入,slave负责读取,分摊流量负载均衡</li>
+<li><code>高可用</code>:主从模式是高可用的基石,哨兵和集群都是基于主从模式而来的</li>
+</ul>
+<h4 id="主从模式实践">主从模式实践<a hidden class="anchor" aria-hidden="true" href="#主从模式实践">#</a></h4>
+<blockquote>
+<p>主从复制的开启,完全是在从节点发起的动作,不需要在主节点上做任何事,通过使用<code>replicaof</code>(5.0版本前使用<code>slaveof</code>)命令可以形成主从关系</p>
+</blockquote>
+<p>开启主从复制有三种方式:</p>
+<h5 id="配置文件方式">配置文件方式<a hidden class="anchor" aria-hidden="true" href="#配置文件方式">#</a></h5>
+<p>在配置文件中指定master节点的ip和端口 <code>replicaof &lt;masterip&gt; &lt;masterport&gt;</code></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231121151529860.png" alt="image-20231121151529860"  />
+</p>
+<h5 id="启动命令方式">启动命令方式<a hidden class="anchor" aria-hidden="true" href="#启动命令方式">#</a></h5>
+<p>在启动Redis实例时加入参数 <code>./redis-server redis.conf --replicaof 127.0.0.1 18080</code></p>
+<h5 id="客户端使用命令方式">客户端使用命令方式<a hidden class="anchor" aria-hidden="true" href="#客户端使用命令方式">#</a></h5>
+<p>使用redis-cli登录实例后,手动执行命令,建立主从关系</p>
+<p><code>SLAVEOF 127.0.0.1 18080</code></p>
+<h4 id="主从复制原理">主从复制原理<a hidden class="anchor" aria-hidden="true" href="#主从复制原理">#</a></h4>
+<blockquote>
+<p>主从模式开启后,应用层采用读写分离,所有数据的写操作只会在主库上执行,所有读操作在从库上执行(特殊情况可以从主库读取)</p>
+<p>主从保证数据的最终一致性,主库数据更新后会立即同步到从库</p>
+</blockquote>
+<h5 id="主从库的同步步骤">主从库的同步步骤<a hidden class="anchor" aria-hidden="true" href="#主从库的同步步骤">#</a></h5>
+<blockquote>
+<p>主从库的数据同步主要有三种情况</p>
+<ul>
+<li>首次配置主从库时的全量数据同步</li>
+<li>主从库正常运行期间的数据实时同步</li>
+<li>主从实例网络断开一段时间后重连时对增量数据的同步和实时数据的同步</li>
+</ul>
+</blockquote>
+<h6 id="第一次全量同步">第一次全量同步<a hidden class="anchor" aria-hidden="true" href="#第一次全量同步">#</a></h6>
+<p>第一次全量同步主要分为三个阶段: 准备阶段 主库同步数据到从库 发送同步期间的增量指令到从库</p>
+<ol>
+<li>
+<p>建立连接:</p>
+<ol>
+<li>从节点在配置文件中配置了<code>replicaof &lt;masterip&gt; &lt;masterport&gt;</code>参数,从节点就知道需要去哪个主节点同步数据</li>
+<li>连接成功后,从库开启<code>replicaof</code>操作,同时发送psync指令告诉主库,我准备开始同步数据了,psync指令包含<code>runId</code>和<code>offset2</code>个参数
+<ul>
+<li>runId: 每个redis实例启动成功后会自动生成一个唯一标识,从库第一次同步还不知道主库的runID,所以参数默认时?</li>
+<li>第一次复制时,没有偏移量,offset设置为-1,这样就会从主库的第一条指令开始复制</li>
+</ul>
+</li>
+<li>主库收到psync指令后根据参数启动复制,使用<code>FULLRESYNC</code>来响应命令,同时带上2个参数:主库的<code>runID</code>和<code>主库目前的复制进度</code>,返回给从库</li>
+<li>从库收到响应后,记录下这2个参数</li>
+</ol>
+</li>
+<li>
+<p>主库同步数据给从库</p>
+<p>master节点执行<code>BGSAVE</code>指令生成RDB文件,将文件发送给从库,从库收到RDB文件后,保存到磁盘,清空当前Redis实例中的数据,再将RDN文件中的数据加载到内存</p>
+<p>主库会为每一个从库开辟一块<code>replication buffer</code>的缓冲区记录,用于记录在RDB文件生成后主库接收到的所有<code>写指令</code></p>
+</li>
+<li>
+<p>发送新的写命令到从库</p>
+<p>从库在初始化完RDB文件中的数据到内存之后,继续执行从<code>replication buffer</code>发送过来的数据,避免出现数据断层</p>
+<p><code>replication buffer</code>缓冲区创建在master主库上,存放的是以下时间内master数据的写操作</p>
+<ul>
+<li>master执行BGSAVE指令期间的写操作</li>
+<li>master传输RDB文件到从库期间的写操作</li>
+<li>slave初始化RDB文件到内存期间的写操作</li>
+</ul>
+</li>
+</ol>
+<p>三个步骤完成了Redis从库的第一次全量复制,RDB作为二进制文件,无论是网络传输还是写盘的IO,效率都比AOF更快,所以主从模式会选择RDB文件来做同步</p>
+<h6 id="增量同步">增量同步<a hidden class="anchor" aria-hidden="true" href="#增量同步">#</a></h6>
+<p>在网络断开之后或者从库故障恢复之后,主从模式会采用增量复制的方式继续同步,而不是全量同步,来提升效率</p>
+<p>从库在故障恢复之后可以实现增量复制的关键就在<code>repl_backlog_buffer</code>缓冲区上面,master会将写指令记录到<code>repl_backlog_buffer</code>中,并使用<code>master_repl_offset</code>记录master写入的位置偏移量,slave则使用<code>slave_repl_offset</code>来读取偏移量,所以master在新增写操作的时候,偏移量会增加,通常情况下,这2个偏移量会保持同步</p>
+<p>但是当网络断开或者从库故障恢复后,主库继续收到写操作,从库暂停执行,就会导致<code>master_repl_offset</code>大于<code>slave_repl_offset</code></p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231121165531924.png" alt="image-20231121165531924"  />
+</p>
+<p>在从库重新连接之后,从库向主库发送psync指令,并将自己的<code>runID</code>和<code>slave_repl_offset</code>2个参数发给主库,主库只需要将<code>master_repl_offset</code>与<code>slave_repl_offset</code>之间的写操作指令发送给从库即可</p>
+<p>在配置<code>repl_backlog_buffer_size</code>的时候,需要考虑多方因素,太大了会导致增量同步的执行时间较长,还不如RDB全覆盖,太小了的话,从库有可能还没有读取到缓冲区的数据就被master的新的写操作给覆盖了</p>
+<p>一般情况下的缓冲区计算公式: <code>repl_backlog_buffer_size</code> = seconds * write_size_per_second * 1.5</p>
+<p><code>seconds</code>:正常情况下,主库断开到重连的平均时间,单位秒</p>
+<p><code>write_size_per_second</code>: 主库平均每秒产生的写指令数量</p>
+<p>1.5: 预留容量</p>
+<h5 id="基于长连接的命令传播">基于长连接的命令传播<a hidden class="anchor" aria-hidden="true" href="#基于长连接的命令传播">#</a></h5>
+<p>以上的同步都是为了完成完成的复制,在完整复制完,主从正常工作开始后进行同步需要保持长连接,在主库接收到写操作指令后,通过这个长连接同步给从库,这个过程称之为<code>基于长连接的命令传播</code>,为了宝成传播的有效性和稳定性,从节点采用心跳机制进行侦测,发送命令 <code>PING</code>和<code>REPLCONF ACK</code></p>
+<p>每隔一定时间(配置中配置),比如30S,主节点会向从节点发送<code>PING</code>命令来判断从节点的健康情况.</p>
+<p>命令传播阶段,从节点会默认以每秒的频率向主服务器发送命令,将从节点已经复制的偏移量发送过去 <code>REPLCONF ACK &lt;replication_offset&gt;</code>, <code>replication_offset</code>属性是指当前从节点已经从主节点复制的偏移量,从节点发送这个<code>REPLCONF ACK</code>命令的主要作用有3个:</p>
+<ul>
+<li>检查主节点的健康状况和网络情况</li>
+<li>辅助实现<code>min-slaves选项</code>,Redis的min-slaves-to-write(少于N个从节点时拒绝执行写命令)和min-slaves-lag(主从延迟大于等于N秒时,拒绝执行写命令),这2个选项可以防止主服务器在不安全的情况下执行写命令</li>
+<li>检测数据丢失: 从节点发送了<code>slave_repl_offset</code>偏移量,主节点会和<code>master_repl_offset</code>进行对比,如果不一致,说明从节点丢失了数据,主节点会从<code>repl_backlog_buffer</code>中将2个offset区间的指令找到并推送给从节点</li>
+</ul>
+<h5 id="如何确定全量还是增量">如何确定全量还是增量<a hidden class="anchor" aria-hidden="true" href="#如何确定全量还是增量">#</a></h5>
+<p>核心点就是从节点发送的psync指令:</p>
+<ol>
+<li>从节点根据自身是否需要全量发送psync给主节点</li>
+<li>如果从未执行过replicaof,则发送<code>psync ? -1</code>,代表全量复制</li>
+<li>如果之前同步过,则取当前实例的runID和已同步的offset发送指令 <code>psync &lt;runID&gt; &lt;slave_repl_offset&gt;</code></li>
+<li>主节点根据psync质量的参数决定是全量同步还是增量同步
+<ol>
+<li>主,从节点的runID一致,并且从节点发送的slave_repl_offset在repl_backlog_buffer中存在(环形闭合的内存缓冲区,有可能被擦除了),则回复CONTINUE,代表以增量模式进行复制</li>
+<li>主,从节点的runID不一致,或者从节点发送的slave_repl_offset在repl_backlog_buffer中不存在(可能是从节点宕机时间过久),则回复<code>FULLRESYNC &lt;runId&gt; &lt;offset&gt;</code>表示要进行全量复制,同时记录下主节点的runID和offset</li>
+</ol>
+</li>
+</ol>
+<h4 id="一主多从同步的理解">一主多从同步的理解<a hidden class="anchor" aria-hidden="true" href="#一主多从同步的理解">#</a></h4>
+<p>从以上内容可以得知:</p>
+<ul>
+<li>多个从库的情况下,每个从库都会记录自己的slave_repl_offset,各自的复制进度也不相同</li>
+<li>从库重连进行恢复时,会通过psync命令将自己的slave_repl_offset告诉主库,主库来判断是增量复制还是全量复制</li>
+</ul>
+<p><code>replication buffer</code>和<code>repl_backlog_buffer</code>的说明:</p>
+<p>replication buffer是主从库在进行<code>全量复制</code>时,主库上用于和从库连接的客户端buffer,repl_backlog_buffer是为了支持从库的增量复制,主库上用于持续记录主库写操作的一块专用buffer,左右从库共享</p>
+
+
+        </div>
         <div class="post-reward">
             <div style="padding: 0 0 0 0; margin: 0 0 0 0; width: 100%; font-size:16px; text-align: center;">
                 <div id="QR" style="opacity: 0;">
@@ -380,15 +612,15 @@ var _hmt = _hmt || [];
         <footer class="post-footer">
             
 <nav class="paginav">
-  <a class="prev" href="https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/">
+  <a class="prev" href="https://www.atomicbot.cloud/posts/tech/seata_at%E6%A8%A1%E5%BC%8F%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E5%AE%9E%E8%B7%B5/">
     <span class="title">« 上一页</span>
     <br>
-    <span>Redis高可用之哨兵模式</span>
+    <span>Spring Cloud Feign &amp;&amp; Seata At模式分布式事务实践</span>
   </a>
-  <a class="next" href="https://www.atomicbot.cloud/posts/tech/redis%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E9%AB%98%E5%8F%AF%E7%94%A8/">
+  <a class="next" href="https://www.atomicbot.cloud/posts/tech/springcloudfeign%E5%9C%A8%E5%BC%82%E6%AD%A5%E6%8E%A5%E5%8F%A3%E6%89%A7%E8%A1%8C%E7%9A%84%E8%BF%87%E7%A8%8B%E4%B8%AD%E4%BC%A0%E9%80%92%E8%AF%B7%E6%B1%82%E5%A4%B4token/">
     <span class="title">下一页 »</span>
     <br>
-    <span>Redis数据持久化高可用</span>
+    <span>Spring Cloud Feign在异步接口执行的过程中传递请求头Token</span>
   </a>
 </nav>
 
