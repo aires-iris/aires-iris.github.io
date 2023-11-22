@@ -7,7 +7,7 @@
 <meta name="robots" content="index, follow">
 <title>Redis高可用之哨兵模式 | Kiki&#39;s Blog</title>
 <meta name="keywords" content="">
-<meta name="description" content="Redis高可用之哨兵模式 - Kiki&#39;s Blog">
+<meta name="description" content="背景 Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下: 故障隔离和恢复: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从) 读写分离:主节点负">
 <meta name="author" content="Kiki">
 <link rel="canonical" href="https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/">
 <link crossorigin="anonymous" href="/assets/css/stylesheet.css" rel="preload stylesheet" as="style">
@@ -46,7 +46,7 @@ var _hmt = _hmt || [];
 })();
 </script>
 <meta property="og:title" content="Redis高可用之哨兵模式" />
-<meta property="og:description" content="" />
+<meta property="og:description" content="背景 Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下: 故障隔离和恢复: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从) 读写分离:主节点负" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.atomicbot.cloud/posts/tech/redis%E9%AB%98%E5%8F%AF%E7%94%A8%E4%B9%8B%E5%93%A8%E5%85%B5%E6%A8%A1%E5%BC%8F/" /><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2020-06-23T21:23:11+00:00" />
@@ -54,7 +54,7 @@ var _hmt = _hmt || [];
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Redis高可用之哨兵模式"/>
-<meta name="twitter:description" content=""/>
+<meta name="twitter:description" content="背景 Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下: 故障隔离和恢复: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从) 读写分离:主节点负"/>
 
 
 <script type="application/ld+json">
@@ -91,12 +91,12 @@ var _hmt = _hmt || [];
   "@type": "BlogPosting",
   "headline": "Redis高可用之哨兵模式",
   "name": "Redis高可用之哨兵模式",
-  "description": "",
+  "description": "背景 Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下: 故障隔离和恢复: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从) 读写分离:主节点负",
   "keywords": [
     ""
   ],
-  "articleBody": "",
-  "wordCount" : "0",
+  "articleBody": "背景 Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下:\n故障隔离和恢复: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从) 读写分离:主节点负责写操作,从节点按照负载均衡的方式提供读服务,分摊了流量和请求压力(极端特殊情况也可以直接从主库读取) 高可用保证: 主从模式是哨兵模式、集群模式的前置条件 主从模式似乎已经挺好了,但是还存在不少问题,从服务故障到手动切换恢复,这可能需要一个比较长的时间,所以我们还需要在主从的基础上为Redis提供感知故障,在master故障时,将某一个可用的slave自动切换为master,实现故障自动转义\n哨兵模式 哨兵模式的核心是主从模式的演变,只不过对于主从模式的主节点崩溃引起无法写入的情况,增加了探活机制:从所有从节点竞选出新的主节点,然后自动奇幻,竞选机制的实现依赖于系统中启动的sentinel进程对各个主从节点的监控\n哨兵的职责 想让Redis实现服务故障自动切换需要考虑的细节有很多:\n判断节点故障的条件?节点可能是假死或者响应延迟 竞选机制,选择那个Slave成为Master 选出新的Master之后,其他Slave需要重新slaveof新的Master,消息是如何通知和通信的 官方对哨兵的定义:\n哨兵作为一种Redis的运行模式,专注于Redis的主从实例进行状态监控,并且能够在主节点发生故障时通过一系列的操作,实现新的Master竞选、主从切换、故障转移,确保整个Redis服务的可用性\n监控 哨兵模式的启用,会同步开启一个叫做sentinel的进程,sentinel进程会向所有的Master和Slave以及其他sentinel进程发送心跳(1s一次),看看是否正常返回响应\n如果Slave没有在规定时间内响应sentinel的ping命令,sentinel会认为该实例不可用,将其标记为:下线状态 同理如果master在规定时间没有响应sentinel的ping命令,也会被判定为下线状态,只不过会多做一个操作,自动进行master的切换流程 ping命令的回复可能有2中情况\n有效回复: 返回 pong -loading -masterdown的任意一种 无效回复: 除有效回复外的情况或者超时没有任何回复 但是sentinel可能存在误判的情况,比如网络抖动、master假死、网络延迟导致某个Redis实例短暂不可用,后续又快速恢复了,如果这个情况下,我们将其主动下线,其实是将整个Redis服务的可用性降低了,所以不能产生这种误判.为了保证判断的可靠性,sentinel将实例标记为下线有2种下线:\n主观下线:哨兵使用 ping监测master和slave,如果是无效回复,哨兵将其标记为主观下线,如果是slave,直接将其下线即可,但如果是master就要小心了,一个sentinel可能存在误判,那么就采用所有哨兵实例一起来判断,就可以避免某个哨兵自身网络情况不好,导致误判将msater下线,同时由所有sentinel一起做决策,误判率也能降低\n客观下线:master是否下线不是某一个sentinel能够决定的,需要集群内所有sentinel一起投票,超过半数的sentinel实例都判断了master主观下线,这个时候才能将master标记为客观下线,认为master真的挂了,当master被标记为客观下线,立即就会启动新master竞选的流程\n如何区别主、客观下线\n主观下线是sentinel自己认为某个节点offline,这时该节点并没有从Redis服务中移除;客观下线是达到一定数量(通常为超过半数)的哨兵都认为该节点offline了,这时汇金一步触发离线、竞选等操作\n这里的超过半数的哨兵是一个法定数量 Quorum,在sentinel.conf中进行配置,该配置主要告诉哨兵需要监听的主节点信息:\n# sentinel monitor # 举例如下： sentinel monitor mymaster 127.0.0.1 6379 2 sentinel monitor : 表示监控 mymaster: 主节点名称,可以自定义 127.0.0.1 6379:主节点ip与端口 2:法定数量,只有当2个或者超过2个哨兵实例认为主节点不可用时,才会将master标记为客观下线状态,然后进行failover操作 主从动态切换 从众多slave中选举一个新的master会比较严谨,需要通过筛选+总和评估的方式进行选举\n筛选 过滤掉不健康(下线或者没有回复哨兵ping)的从节点 评估这些实例的历史网络连接状况,down-after-milliseconds,如果在一定周期内(比如24小时)这个从库经常断联并且还超过了指定阈值(比如10次),这种从节点不予考虑 这样筛选后留下的就是比较健康的实例了\n综合评估 筛选掉不健康的实例后,就可以对剩余健康的实例进行综合评估\nslave优先级,通过slave-priority配置项判断,优先级高的从节点优先成为master,该配置在redis.conf中进行配置 选择数据偏移量差距最小的,即master_repl_offset和slave_repl_offset的进度差距,其实就是选择同步进度最高的 slave runID,在优先级和同步进度相同的情况下,选用runID最小的,runID最小,说明该实例创建时间越早,运行时间越长,也可理解为先来后到 这几个条件都评估完后,sentinel集群就会选出最合适的slave,将其推举为新的master\n信息通知 在选出新的master之后,后续客户端的所有写操作都会进入这个master,所以需要尽快通知其他slave重新slaveof到新的master上,重新建立runID和slave_repl_offset,来保证正常的数据服务和主从一致性\n关于哨兵集群 哨兵集群如何通信 使用redis的pub/sub订阅能力实现哨兵间通信和slave发现,哨兵与master建立通信之后,可利用master实例的发布/订阅机制发布自身的(哨兵)ip与端口\nmaster有一个sentinel:hello的专用通道,用来给哨兵之间发布和订阅消息,哨兵可以通过该通道发布自己的name、ip、port消息,同时订阅其他哨兵发布的name、ip、port消息,这与微服务中的服务注册于发现类似\n哨兵如何与slave连接 sentinel向master发送info命令 master会返回所有slaveof了自己的从节点信息 sentinel根据master返回的slave列表,逐个与slave建立连接,并根据这个连接持续监控 总结 哨兵集群任务 哨兵机制是实现Redis不间断服务高可用的手段之一,是在master宕机后,自动主从切换提供高可用服务的关键支撑\n监控master与slave的运行状态,判断是否客观下线 master客观下线后,选择一个slave将其推举为新的master 通知其他slave和客户端新的master信息 哨兵集群原理 基于Redis的pub/sub机制实现哨兵间的通信 基于INFO命令获取slave列表,帮助哨兵与slave建立连接 通过哨兵的pub/sub,实现客户端和哨兵之间的时间通知 主从切换,并不是随意选择一个哨兵来执行这一系列的动作,而是通过仲裁投票,选出一个sentinel leader,由这个leader来负责主从切换\n",
+  "wordCount" : "2974",
   "inLanguage": "zh",
   "datePublished": "2020-06-23T21:23:11Z",
   "dateModified": "2020-06-23T21:23:11Z",
@@ -274,13 +274,13 @@ var _hmt = _hmt || [];
     
     <span id="post_meta_style_3">
         <span class="fa fa-file-word-o"></span>
-        <span>0字
+        <span>2974字
             &nbsp;&nbsp;
         </span>
     </span>
     <span id="post_meta_style_4">
         <span class="fa fa-clock-o"></span>
-        <span>0分钟
+        <span>6分钟
             &nbsp;&nbsp;
         </span>
     </span>
@@ -348,7 +348,220 @@ var _hmt = _hmt || [];
                 </span>
 
 </div>
-        </header> 
+        </header> <aside id="toc-container" class="toc-container wide">
+    <div class="toc">
+        <details  open>
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e8%83%8c%e6%99%af" aria-label="背景">背景</a></li>
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e6%a8%a1%e5%bc%8f" aria-label="哨兵模式">哨兵模式</a></li>
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e7%9a%84%e8%81%8c%e8%b4%a3" aria-label="哨兵的职责">哨兵的职责</a><ul>
+                        
+                <li>
+                    <a href="#%e7%9b%91%e6%8e%a7" aria-label="监控">监控</a></li>
+                <li>
+                    <a href="#%e4%b8%bb%e4%bb%8e%e5%8a%a8%e6%80%81%e5%88%87%e6%8d%a2" aria-label="主从动态切换">主从动态切换</a><ul>
+                        
+                <li>
+                    <a href="#%e7%ad%9b%e9%80%89" aria-label="筛选">筛选</a></li>
+                <li>
+                    <a href="#%e7%bb%bc%e5%90%88%e8%af%84%e4%bc%b0" aria-label="综合评估">综合评估</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e4%bf%a1%e6%81%af%e9%80%9a%e7%9f%a5" aria-label="信息通知">信息通知</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e5%85%b3%e4%ba%8e%e5%93%a8%e5%85%b5%e9%9b%86%e7%be%a4" aria-label="关于哨兵集群">关于哨兵集群</a><ul>
+                        
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e9%9b%86%e7%be%a4%e5%a6%82%e4%bd%95%e9%80%9a%e4%bf%a1" aria-label="哨兵集群如何通信">哨兵集群如何通信</a></li>
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e5%a6%82%e4%bd%95%e4%b8%8eslave%e8%bf%9e%e6%8e%a5" aria-label="哨兵如何与slave连接">哨兵如何与slave连接</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%80%bb%e7%bb%93" aria-label="总结">总结</a><ul>
+                        
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e9%9b%86%e7%be%a4%e4%bb%bb%e5%8a%a1" aria-label="哨兵集群任务">哨兵集群任务</a></li>
+                <li>
+                    <a href="#%e5%93%a8%e5%85%b5%e9%9b%86%e7%be%a4%e5%8e%9f%e7%90%86" aria-label="哨兵集群原理">哨兵集群原理</a>
+                </li>
+            </ul>
+            </li>
+            </ul>
+        </div>
+        </details>
+    </div>
+</aside>
+<script>
+    let activeElement;
+    let elements;
+    window.addEventListener('DOMContentLoaded', function (event) {
+        checkTocPosition();
+
+        elements = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]');
+        
+        activeElement = elements[0];
+        const id = encodeURI(activeElement.getAttribute('id')).toLowerCase();
+        document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+    }, false);
+
+    window.addEventListener('resize', function(event) {
+        checkTocPosition();
+    }, false);
+
+    window.addEventListener('scroll', () => {
+        
+        if (elements) {
+            activeElement = Array.from(elements).find((element) => {
+                if ((getOffsetTop(element) - window.pageYOffset) > 0 &&
+                    (getOffsetTop(element) - window.pageYOffset) < window.innerHeight/2) {
+                    return element;
+                }
+            }) || activeElement
+
+            elements.forEach(element => {
+                const id = encodeURI(element.getAttribute('id')).toLowerCase();
+                if (element === activeElement){
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.add('active');
+                } else {
+                    document.querySelector(`.inner ul li a[href="#${id}"]`).classList.remove('active');
+                }
+            })
+        }
+    }, false);
+
+    const main = parseInt(getComputedStyle(document.body).getPropertyValue('--article-width'), 10);
+    const toc = parseInt(getComputedStyle(document.body).getPropertyValue('--toc-width'), 10);
+    const gap = parseInt(getComputedStyle(document.body).getPropertyValue('--gap'), 10);
+
+    function checkTocPosition() {
+        const width = document.body.scrollWidth;
+        if (width - main - (toc * 2) - (gap * 4) > 0) {
+            document.getElementById("toc-container").classList.add("wide");
+        } else {
+            document.getElementById("toc-container").classList.remove("wide");
+        }
+    }
+
+    function getOffsetTop(element) {
+        if (!element.getClientRects().length) {
+            return 0;
+        }
+        let rect = element.getBoundingClientRect();
+        let win = element.ownerDocument.defaultView;
+        return rect.top + win.pageYOffset;
+    }
+</script>
+        <div class="post-content"><h4 id="背景">背景<a hidden class="anchor" aria-hidden="true" href="#背景">#</a></h4>
+<p>Redis主从模式由于是读写分离的模式,可以大幅提高性能和服务的可用性,减少甚至避免Redis服务发生宕机的可能,主从模式的主要能力如下:</p>
+<ul>
+<li><code>故障隔离和恢复</code>: 无论主节点或者从节点崩溃,其他节点仍然可以正常提供服务(主节点崩溃时,无法提供写服务,需要手动切换主从)</li>
+<li><code>读写分离</code>:主节点负责写操作,从节点按照负载均衡的方式提供读服务,分摊了流量和请求压力(极端特殊情况也可以直接从主库读取)</li>
+<li><code>高可用保证</code>: 主从模式是哨兵模式、集群模式的前置条件</li>
+</ul>
+<p>主从模式似乎已经挺好了,但是还存在不少问题,从服务故障到手动切换恢复,这可能需要一个比较长的时间,所以我们还需要在主从的基础上为Redis提供感知故障,在master故障时,将某一个可用的slave自动切换为master,实现故障自动转义</p>
+<h4 id="哨兵模式">哨兵模式<a hidden class="anchor" aria-hidden="true" href="#哨兵模式">#</a></h4>
+<p>哨兵模式的核心是主从模式的演变,只不过对于主从模式的主节点崩溃引起无法写入的情况,增加了探活机制:从所有从节点竞选出新的主节点,然后自动奇幻,竞选机制的实现依赖于系统中启动的sentinel进程对各个主从节点的监控</p>
+<p><img loading="lazy" src="https://fanzhengxiang.oss-cn-chengdu.aliyuncs.com/blog-img/image-20231122132645937.png" alt="image-20231122132645937"  />
+</p>
+<h4 id="哨兵的职责">哨兵的职责<a hidden class="anchor" aria-hidden="true" href="#哨兵的职责">#</a></h4>
+<p>想让Redis实现服务故障自动切换需要考虑的细节有很多:</p>
+<ul>
+<li>判断节点故障的条件?节点可能是假死或者响应延迟</li>
+<li>竞选机制,选择那个Slave成为Master</li>
+<li>选出新的Master之后,其他Slave需要重新slaveof新的Master,消息是如何通知和通信的</li>
+</ul>
+<p>官方对哨兵的定义:</p>
+<blockquote>
+<p>哨兵作为一种Redis的运行模式,专注于Redis的主从实例进行状态监控,并且能够在主节点发生故障时通过一系列的操作,实现新的Master竞选、主从切换、故障转移,确保整个Redis服务的可用性</p>
+</blockquote>
+<h5 id="监控">监控<a hidden class="anchor" aria-hidden="true" href="#监控">#</a></h5>
+<p>哨兵模式的启用,会同步开启一个叫做sentinel的进程,sentinel进程会向所有的<code>Master</code>和<code>Slave</code>以及<code>其他sentinel</code>进程发送心跳(1s一次),看看是否正常返回响应</p>
+<ul>
+<li>如果Slave没有在规定时间内响应sentinel的ping命令,sentinel会认为该实例不可用,将其标记为:<code>下线状态</code></li>
+<li>同理如果master在规定时间没有响应sentinel的ping命令,也会被判定为下线状态,只不过会多做一个操作,自动进行master的切换流程</li>
+</ul>
+<p>ping命令的回复可能有2中情况</p>
+<ul>
+<li><code>有效回复</code>: 返回 pong -loading -masterdown的任意一种</li>
+<li><code>无效回复</code>: 除有效回复外的情况或者超时没有任何回复</li>
+</ul>
+<p>但是sentinel可能存在误判的情况,比如网络抖动、master假死、网络延迟导致某个Redis实例短暂不可用,后续又快速恢复了,如果这个情况下,我们将其主动下线,其实是将整个Redis服务的可用性降低了,所以不能产生这种误判.为了保证判断的可靠性,sentinel将实例标记为下线有2种下线:</p>
+<ul>
+<li>
+<p><code>主观下线</code>:哨兵使用 ping监测master和slave,如果是<code>无效回复</code>,哨兵将其标记为<code>主观下线</code>,如果是slave,直接将其下线即可,但如果是master就要小心了,一个sentinel可能存在误判,那么就采用所有哨兵实例一起来判断,就可以避免某个哨兵自身网络情况不好,导致误判将msater下线,同时由所有sentinel一起做决策,误判率也能降低</p>
+</li>
+<li>
+<p><code>客观下线</code>:master是否下线不是某一个sentinel能够决定的,需要集群内所有sentinel一起投票,超过半数的sentinel实例都判断了master主观下线,这个时候才能将master标记为客观下线,认为master真的挂了,当master被标记为客观下线,立即就会启动新master竞选的流程</p>
+</li>
+<li>
+<p>如何区别主、客观下线</p>
+<p>主观下线是sentinel自己认为某个节点offline,这时该节点并没有从Redis服务中移除;客观下线是达到一定数量(通常为超过半数)的哨兵都认为该节点offline了,这时汇金一步触发离线、竞选等操作</p>
+</li>
+</ul>
+<p>这里的<code>超过半数</code>的哨兵是一个法定数量 Quorum,在sentinel.conf中进行配置,该配置主要告诉哨兵需要监听的主节点信息:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span># sentinel monitor &lt;master-name&gt; &lt;master-host&gt; &lt;master-port&gt; &lt;quorum&gt;
+</span></span><span style="display:flex;"><span># 举例如下：
+</span></span><span style="display:flex;"><span>sentinel monitor mymaster 127.0.0.1 6379 2
+</span></span></code></pre></div><ul>
+<li><code>sentinel monitor</code> : 表示监控</li>
+<li><code>mymaster</code>: 主节点名称,可以自定义</li>
+<li><code>127.0.0.1 6379</code>:主节点ip与端口</li>
+<li><code>2</code>:法定数量,只有当2个或者超过2个哨兵实例认为主节点不可用时,才会将master标记为<code>客观下线</code>状态,然后进行failover操作</li>
+</ul>
+<h5 id="主从动态切换">主从动态切换<a hidden class="anchor" aria-hidden="true" href="#主从动态切换">#</a></h5>
+<p>从众多slave中选举一个新的master会比较严谨,需要通过筛选+总和评估的方式进行选举</p>
+<h6 id="筛选">筛选<a hidden class="anchor" aria-hidden="true" href="#筛选">#</a></h6>
+<ol>
+<li>过滤掉不健康(下线或者没有回复哨兵ping)的<code>从节点</code></li>
+<li>评估这些实例的历史网络连接状况,<code>down-after-milliseconds</code>,如果在一定周期内(比如24小时)这个从库经常断联并且还超过了指定阈值(比如10次),这种从节点不予考虑</li>
+</ol>
+<p>这样筛选后留下的就是比较健康的实例了</p>
+<h6 id="综合评估">综合评估<a hidden class="anchor" aria-hidden="true" href="#综合评估">#</a></h6>
+<p>筛选掉不健康的实例后,就可以对剩余健康的实例进行综合评估</p>
+<ul>
+<li>slave优先级,通过<code>slave-priority</code>配置项判断,优先级高的从节点优先成为master,该配置在redis.conf中进行配置</li>
+<li>选择数据偏移量差距最小的,即<code>master_repl_offset</code>和<code>slave_repl_offset</code>的进度差距,其实就是选择同步进度最高的</li>
+<li>slave runID,在优先级和同步进度相同的情况下,选用runID最小的,runID最小,说明该实例创建时间越早,运行时间越长,也可理解为先来后到</li>
+</ul>
+<p>这几个条件都评估完后,sentinel集群就会选出最合适的slave,将其推举为新的master</p>
+<h5 id="信息通知">信息通知<a hidden class="anchor" aria-hidden="true" href="#信息通知">#</a></h5>
+<p>在选出新的master之后,后续客户端的所有写操作都会进入这个master,所以需要尽快通知其他slave重新slaveof到新的master上,重新建立runID和slave_repl_offset,来保证正常的数据服务和主从一致性</p>
+<h4 id="关于哨兵集群">关于哨兵集群<a hidden class="anchor" aria-hidden="true" href="#关于哨兵集群">#</a></h4>
+<h5 id="哨兵集群如何通信">哨兵集群如何通信<a hidden class="anchor" aria-hidden="true" href="#哨兵集群如何通信">#</a></h5>
+<p>使用redis的<code>pub/sub</code>订阅能力实现哨兵间通信和slave发现,哨兵与master建立通信之后,可利用master实例的发布/订阅机制发布自身的(哨兵)ip与端口</p>
+<p>master有一个<code>sentinel:hello</code>的专用通道,用来给哨兵之间发布和订阅消息,哨兵可以通过该通道发布自己的name、ip、port消息,同时订阅其他哨兵发布的name、ip、port消息,<code>这与微服务中的服务注册于发现类似</code></p>
+<h5 id="哨兵如何与slave连接">哨兵如何与slave连接<a hidden class="anchor" aria-hidden="true" href="#哨兵如何与slave连接">#</a></h5>
+<ul>
+<li>sentinel向master发送info命令</li>
+<li>master会返回所有slaveof了自己的从节点信息</li>
+<li>sentinel根据master返回的slave列表,逐个与slave建立连接,并根据这个连接持续监控</li>
+</ul>
+<h4 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h4>
+<h5 id="哨兵集群任务">哨兵集群任务<a hidden class="anchor" aria-hidden="true" href="#哨兵集群任务">#</a></h5>
+<p>哨兵机制是实现Redis不间断服务高可用的手段之一,是在master宕机后,自动主从切换提供高可用服务的关键支撑</p>
+<ul>
+<li>监控master与slave的运行状态,判断是否客观下线</li>
+<li>master客观下线后,选择一个slave将其推举为新的master</li>
+<li>通知其他slave和客户端新的master信息</li>
+</ul>
+<h5 id="哨兵集群原理">哨兵集群原理<a hidden class="anchor" aria-hidden="true" href="#哨兵集群原理">#</a></h5>
+<ul>
+<li>基于Redis的<code>pub/sub</code>机制实现哨兵间的通信</li>
+<li>基于INFO命令获取slave列表,帮助哨兵与slave建立连接</li>
+<li>通过哨兵的<code>pub/sub</code>,实现客户端和哨兵之间的时间通知</li>
+</ul>
+<p>主从切换,并不是随意选择一个哨兵来执行这一系列的动作,而是通过仲裁投票,选出一个<code>sentinel leader</code>,由这个leader来负责主从切换</p>
+
+
+        </div>
         <div class="post-reward">
             <div style="padding: 0 0 0 0; margin: 0 0 0 0; width: 100%; font-size:16px; text-align: center;">
                 <div id="QR" style="opacity: 0;">
