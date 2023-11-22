@@ -35,15 +35,6 @@
     </item>
     
     <item>
-      <title>Redis</title>
-      <link>https://www.atomicbot.cloud/tags/redis/</link>
-      <pubDate>Mon, 19 Sep 2022 13:35:26 +0800</pubDate>
-      
-      <guid>https://www.atomicbot.cloud/tags/redis/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>Spring Cloud</title>
       <link>https://www.atomicbot.cloud/tags/spring-cloud/</link>
       <pubDate>Mon, 24 Jan 2022 13:37:21 +0800</pubDate>
@@ -58,6 +49,15 @@
       <pubDate>Mon, 24 Jan 2022 13:37:21 +0800</pubDate>
       
       <guid>https://www.atomicbot.cloud/tags/%E5%BC%82%E6%AD%A5%E7%BC%96%E7%A8%8B/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redis</title>
+      <link>https://www.atomicbot.cloud/tags/redis/</link>
+      <pubDate>Tue, 23 Jun 2020 21:23:11 +0000</pubDate>
+      
+      <guid>https://www.atomicbot.cloud/tags/redis/</guid>
       <description></description>
     </item>
     
